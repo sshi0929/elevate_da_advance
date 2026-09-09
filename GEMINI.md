@@ -38,10 +38,25 @@
   - Full report documented in [`BENCHMARK_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/BENCHMARK_REPORT.md).
 - [x] **Module 1 / Lab 1 — Dataplex Lineage**: OpenLineage verified connecting 3 lakehouse sources to the gold ledger.
 - [x] **Module 1 / Lab 1 — Cloud Composer Orchestration**: Deployed [`cymbal_nightly_inventory_reconciliation.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/cymbal_nightly_inventory_reconciliation.py) with `DataprocCreateBatchOperator` (Lightning) and `BigQueryCheckOperator` (`COUNT(*) = 8400`). Ad-hoc run triggered.
-- [x] **Monorepo Consolidation**: Stripped nested `.git` folders, updated root [`README.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/README.md), committed and pushed cleanly to `sshi0929/elevate_da_advance` (`main`).
+- [x] **Module 1 / Lab 2a — Multimodal POS Hardware Intelligence & RAG**:
+  - Object table `pos_manual_generic_pdfs_objects` over 5 OEM manuals with automated metadata caching.
+  - Remote model `gemini_pos_manual_extractor` registered.
+  - Batch extraction `pos_manual_generic_sections_extracted` materialized via `AI.GENERATE_TABLE` with 12 typed columns.
+  - 768-dim dense embeddings materialized into `pos_manual_embeddings` via `text-embedding-005`.
+  - Native `VECTOR_SEARCH` verified with Cosine distance (0.2495 top match for Toshiba NVMe SSD replacement).
+  - Grounded RAG directives generated for store operations and emergency SOPs.
+- [x] **Module 1 / Lab 2b — Warranty Dark Data Intelligence & Native Semantic Search**:
+  - Object table `warranty_generic_pdfs_objects` exposing 26 warranty PDF certificates with `ObjectRef` verification.
+  - Direct zero-shot boolean evaluation (`AI.IF`) on raw PDF binaries for accidental damage and unit replacement options.
+  - Zero-shot retail taxonomy classification (`AI.CLASSIFY`) accurately categorizing audio, wearables, and computing devices.
+  - Batch extraction `warranty_generic_sections_extracted` materialized with 17 typed fields and verbatim content.
+  - Quality Gate passed: 26/26 rows, 0 missing names/prices/durations, avg content length 5,838 chars (min 2,764 >= 800).
+  - Autonomous stored embeddings materialized into `warranty_generic_pdf_chunk_embeddings` with `GENERATED ALWAYS AS (AI.EMBED(...)) STORED OPTIONS(asynchronous = TRUE)`.
+  - Native semantic search (`AI.SEARCH`) executed with top match `prod_155` (OnePlus Nord Buds CE, distance 0.2089).
+  - Full scripts saved in [`02_multimodal_rag_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02_multimodal_rag_pipelines.sql) and report in [`LAB2_MULTIMODAL_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB2_MULTIMODAL_REPORT.md).
 
 ### 4. Immediate Next Action (DA Track)
-* **Module 1 / Lab 2a**: Multimodal POS Hardware Intelligence & Conversational RAG with BigQuery AI ([`02a-pos-manual-generic-rag.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02a-pos-manual-generic-rag.md)) using `AI.GENERATE_TABLE`, `text-embedding-005`, and `gemini-3.5-flash`.
+* **Module 1 / Lab 3**: BigQuery Graph Analytics ([`03-bigquery-graph-analytics.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/03-bigquery-graph-analytics.md)) evaluating property graphs, GQL, and graph-based retail intelligence.
 
 ---
 
