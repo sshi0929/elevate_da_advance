@@ -54,9 +54,27 @@
   - Autonomous stored embeddings materialized into `warranty_generic_pdf_chunk_embeddings` with `GENERATED ALWAYS AS (AI.EMBED(...)) STORED OPTIONS(asynchronous = TRUE)`.
   - Native semantic search (`AI.SEARCH`) executed with top match `prod_155` (OnePlus Nord Buds CE, distance 0.2089).
   - Full scripts saved in [`02_multimodal_rag_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02_multimodal_rag_pipelines.sql) and report in [`LAB2_MULTIMODAL_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB2_MULTIMODAL_REPORT.md).
+- [x] **Japan Delivery Enablement & Lecture Transcriptions**:
+  - Transcribed Day 1 sync and all 3 Day 2 technical training recordings using `gemini-3.8-flash` on Vertex AI via GCS staging (`gs://pj-elevate-da-module1-bucket/day2_audio/`).
+  - Generated complete, verbatim Markdown files with timestamps, speaker identification, and executive summaries in [`Japan_delivery/Day2_audio/`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/):
+    1. [`Day2_Iceberg_lecture1_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Iceberg_lecture1_transcript.md) (44.3 min / 45K chars)
+    2. [`Day2_Iceberg_lecture2_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Iceberg_lecture2_transcript.md) (16.7 min / 18K chars)
+    3. [`Day2_Spark_lecture1_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Spark_lecture1_transcript.md) (50.1 min / 53K chars)
+
+- [x] **Module 1 / Lab 3 — BigQuery Property Graph Analytics & Supply Chain Recall (BRD 2.4)**:
+  - Installed and verified latest [`bigquery-graph`](file:///usr/local/google/home/watanabesei/.gemini/config/skills/bigquery-graph/SKILL.md) skill from `google/adk-python`.
+  - Verified 4 node tables (`customer_nodes` 32,264 rows, `store_nodes` 50 rows, `supplier_nodes` 5 rows, `batch_lot_nodes` 41 rows) and 3 edge tables (`produced_batch_edges` 41 rows, `shipped_to_edges` 180 rows, `sold_lot_to_customer_edges` 100 rows) in federated AWS Iceberg dataset `pj-elevate-da.cymbal-lakehouse.elevate_data`.
+  - Registered property graph `pj-elevate-da.cymbal_gold.supply_chain_traceability_graph` via native DDL.
+  - Variable-length path traversal (`-[s:SHIPPED_TO]->{1,3}`) verified 180 paths with `PATH_LENGTH(p)` and `TO_JSON(p)`.
+  - VIP Recall Triage pattern match (`MATCH (sup)->(lot)->(cust)`) isolated exactly 38 high-priority PLATINUM/GOLD customers.
+  - Diamond blast-radius matching discovered 99 secondary co-exposure events across common high-risk supplier `SUP_001`.
+  - Emergency contact ledger extracted 44 hardware serials and phone numbers via `GRAPH_TABLE()`.
+  - Supplier defect scorecard revealed `SUP_001` (Apex Battery) with 100% defect rate vs. 0.0% across all other suppliers.
+  - Materialized gold 360° recall view `pj-elevate-da.cymbal_gold.supply_chain_recall_traceability_360` bridging graph traversals into relational SQL and text-to-SQL agents.
+  - Full scripts saved in [`03_graph_analytics_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/03_graph_analytics_pipelines.sql) and report in [`LAB3_GRAPH_ANALYTICS_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB3_GRAPH_ANALYTICS_REPORT.md).
 
 ### 4. Immediate Next Action (DA Track)
-* **Module 1 / Lab 3**: BigQuery Graph Analytics ([`03-bigquery-graph-analytics.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/03-bigquery-graph-analytics.md)) evaluating property graphs, GQL, and graph-based retail intelligence.
+* **Module 1 / Lab 4**: Data Governance, Policy Tags & Masking ([`04-data-governance-policy-tags-masking.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/04-data-governance-policy-tags-masking.md)).
 
 ---
 
