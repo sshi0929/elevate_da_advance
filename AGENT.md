@@ -1,0 +1,1 @@
+/usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/GEMINI.md
