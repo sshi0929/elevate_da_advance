@@ -60,6 +60,12 @@
     1. [`Day2_Iceberg_lecture1_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Iceberg_lecture1_transcript.md) (44.3 min / 45K chars)
     2. [`Day2_Iceberg_lecture2_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Iceberg_lecture2_transcript.md) (16.7 min / 18K chars)
     3. [`Day2_Spark_lecture1_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Spark_lecture1_transcript.md) (50.1 min / 53K chars)
+    4. [`Day2_PropertyGraph_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_PropertyGraph_transcript.md) (24.1 min / 23K chars)
+    5. [`Day2_Security_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Security_transcript.md) (25.5 min / 26K chars)
+  - All transcripts synced as Google Docs to shared Drive folder: [`DA Elevate Japan Delivery — Transcripts`](https://drive.google.com/drive/folders/1wLXrXEzXt3WQXzogCzDSp4JW0l0MTG4r) (Editor access shared with `takumik@google.com`).
+- [x] **Autonomous Audio Watcher & Drive Synchronization Pipeline**:
+  - Script: [`Japan_delivery/auto_transcribe_and_sync.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/auto_transcribe_and_sync.py).
+  - Standing Rule: Any newly arriving audio clip in `Japan_delivery/` is automatically staged to GCS (`gs://pj-elevate-da-module1-bucket/japan_delivery_audio/`), transcribed via `gemini-3.8-flash` on Vertex AI (verbatim timestamps + executive summary), converted and uploaded to Google Drive folder `1wLXrXEzXt3WQXzogCzDSp4JW0l0MTG4r` as a Google Doc + raw `.md`, and indexed in `00_README`. Local tracking maintained at [`Japan_delivery/sync_manifest.json`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/sync_manifest.json).
 
 - [x] **Module 1 / Lab 3 — BigQuery Property Graph Analytics & Supply Chain Recall (BRD 2.4)**:
   - Installed and verified latest [`bigquery-graph`](file:///usr/local/google/home/watanabesei/.gemini/config/skills/bigquery-graph/SKILL.md) skill from `google/adk-python`.
@@ -71,10 +77,20 @@
   - Emergency contact ledger extracted 44 hardware serials and phone numbers via `GRAPH_TABLE()`.
   - Supplier defect scorecard revealed `SUP_001` (Apex Battery) with 100% defect rate vs. 0.0% across all other suppliers.
   - Materialized gold 360° recall view `pj-elevate-da.cymbal_gold.supply_chain_recall_traceability_360` bridging graph traversals into relational SQL and text-to-SQL agents.
-  - Full scripts saved in [`03_graph_analytics_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/03_graph_analytics_pipelines.sql) and report in [`LAB3_GRAPH_ANALYTICS_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB3_GRAPH_ANALYTICS_REPORT.md).
+- [x] **Module 1 / Lab 4 — IAM Data Governance Tags, Dynamic Masking & Row-Level Security (BRD 2.2)**:
+  - Created Cloud Resource Manager Tag Key `pii_classification` (`tagKeys/281480941817283`) with `purpose = DATA_GOVERNANCE` under `projects/pj-elevate-da`.
+  - Created 4 hierarchical Tag Values (`customer_name` High, `customer_id` Med, `financial_amount` Med, `store_metadata` Low).
+  - Attached column tags via native BigQuery SQL DDL (`ALTER TABLE ... ALTER COLUMN ... SET OPTIONS(data_governance_tags=[...])`) to 5 columns in dedicated working table `aws_pos_transactions_gold2` (90,816 rows). Verified via `INFORMATION_SCHEMA.COLUMN_FIELD_PATHS`.
+  - Provisioned 4 `RAW_DATA_ACCESS_POLICY` and 4 `DATA_MASKING_POLICY` data policies via BigQuery Data Policy API v2.
+  - Implemented Row Access Policies on `gold_inventory_reconciliation_ledger2` (8,400 rows) with `rls_unrestricted_lead` (`FILTER USING (TRUE)`) and `rls_analyst_stores` (`store_id IN ('STORE_048', 'STORE_009')`).
+  - Multi-persona live query verification executed via SA token impersonation:
+    - 👑 **Data Lead (`sa-data-lead`)**: 100% unmasked plaintext names/amounts + nationwide store visibility.
+    - 🎭 **Business Analyst (`sa-analyst`)**: Irreversible 64-character `SHA256` names, masked `XXXXX<last4>` customer IDs, `$0.00` amounts, and strictly scoped to authorized store (`STORE_009`).
+    - 🚫 **Restricted User (`sa-restricted`)**: Immediate `403 Forbidden` on protected CLS columns, and `0 rows` returned on RLS ledger (Default Deny).
+  - Full scripts saved in [`04_data_governance_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/04_data_governance_pipelines.sql) and report in [`LAB4_DATA_GOVERNANCE_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB4_DATA_GOVERNANCE_REPORT.md).
 
 ### 4. Immediate Next Action (DA Track)
-* **Module 1 / Lab 4**: Data Governance, Policy Tags & Masking ([`04-data-governance-policy-tags-masking.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/04-data-governance-policy-tags-masking.md)).
+* **Module 1 All Labs (1, 2a, 2b, 3, 4) Complete!**: Proceed to Module 2 (Advanced Lakehouse Transformations & Feature Store) / Day 3 enablement as soon as assets are published.
 
 ---
 
