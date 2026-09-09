@@ -1,73 +1,92 @@
-# Project Context Memory: Elevate Data Analytics Advanced (Cymbal Retail)
+# Project Elevate — Unified Project Memory & Agent Guide (GEMINI.md / AGENT.md)
 
 ## 📌 Executive Summary & Project Identity
-* **Initiative**: Google Cloud Data Analytics Advanced Training — Cymbal Retail Agentic AI & Data Platform Modernization.
-* **Customer**: Cymbal Retail (500+ storefronts, global e-commerce portal) migrating from AWS/Databricks/S3 to Google Cloud Modern Lakehouse & Agentic AI Platform.
+* **Program**: Project Elevate — Google Cloud Japan Customer Engineering Advanced Enablement.
 * **User Profile**: Pre-sales Customer Engineer, Data Analytics Team, Google Cloud Japan.
-* **Official Evaluation Git Monorepo**: `https://github.com/sshi0929/elevate_da_advance.git` (local root: `/usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced`).
-* **BRD Location**: `DA_advanced/module_0/elevate-da-adv-day1/brd.md` (v3.0).
-* **SDD Location**: `DA_advanced/module_1/sdd.md`.
+* **Workspace Root**: `/usr/local/google/home/watanabesei/account_work/Admin/pj_elevate`
+* **Core Tracks**:
+  1. **Data Analytics Advanced Track** (`DA_advanced/`): Cymbal Retail Modern Lakehouse & Agentic AI Platform.
+  2. **AI / Agent School Track** (`AI/`): Enterprise HR/IT Multi-Agent System & Two-Pillar Evaluation.
 
 ---
 
-## ⚙️ Active Environment Configuration
-* **GCP Project ID**: `pj-elevate-da`
-* **Region**: `us-central1`
-* **Data Service Account**: `cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com`
-* **Dedicated Subnet**: `projects/pj-elevate-da/regions/us-central1/subnetworks/cymbal-retail-subnet-us-central1`
-* **GCS Staging Bucket**: `gs://pj-elevate-da-module1-bucket`
-* **Federated Catalog Dataset**: `pj-elevate-da.cymbal-lakehouse.elevate_data` (AWS Iceberg via BigLake REST Catalog)
-* **BigQuery Gold Destination Table**: `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger` (Managed Iceberg)
-* **Cloud Composer Environment**: `cymbal-airflow-env` (Composer 3 / Airflow 2.10.5 in `us-central1`)
-* **Composer DAGs GCS Path**: `gs://us-central1-cymbal-airflow--239c1410-bucket/dags`
-* **Airflow Webserver URL**: `https://1348a0a0dd624452858576ff65fd281c-dot-us-central1.composer.googleusercontent.com`
+## 🏛️ Track 1: Data Analytics Advanced (Cymbal Retail Modernization)
+
+### 1. Context & Architecture
+* **Customer**: Cymbal Retail (500+ storefronts, global e-commerce portal) migrating from AWS/Databricks/S3 to Google Cloud Modern Lakehouse & Agentic AI.
+* **Official Evaluation Git Monorepo**: `https://github.com/sshi0929/elevate_da_advance.git` (local root: `DA_advanced/`).
+* **BRD Location**: [`DA_advanced/module_0/elevate-da-adv-day1/brd.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_0/elevate-da-adv-day1/brd.md) (v3.0).
+* **SDD Location**: [`DA_advanced/module_1/sdd.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/sdd.md).
+
+### 2. Active Environment Configuration
+* **GCP Project ID**: `pj-elevate-da` | **Region**: `us-central1`
+* **Service Account**: `cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com`
+* **Subnet**: `projects/pj-elevate-da/regions/us-central1/subnetworks/cymbal-retail-subnet-us-central1`
+* **GCS Staging**: `gs://pj-elevate-da-module1-bucket`
+* **Federated Catalog**: `pj-elevate-da.cymbal-lakehouse.elevate_data` (AWS Iceberg via BigLake REST Catalog)
+* **Gold Sink Table**: `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger` (Managed Iceberg)
+* **Cloud Composer**: `cymbal-airflow-env` (Composer 3 / Airflow 2.10.5 in `us-central1`)
+* **Airflow URL**: `https://1348a0a0dd624452858576ff65fd281c-dot-us-central1.composer.googleusercontent.com`
+
+### 3. Completed Milestones (DA Track)
+- [x] **Module 0 / Day 1 (100%)**: BRD review, Terraform infrastructure bootstrap (`deploy/`), full SDD authored (`module_1/sdd.md`).
+- [x] **Module 1 / Lab 1 — PySpark Migration**: Refactored Databricks notebook to modular PySpark script [`migrated_inventory_reconciliation_pipeline.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/migrated_inventory_reconciliation_pipeline.py) using `writeMethod=direct`.
+- [x] **Module 1 / Lab 1 — Multi-Engine Benchmark**:
+  - **Standard Engine** (`recon-standard-1788925596`): 129s runtime, 112.49s compute, 1,528.65 DCU-s.
+  - **Lightning Engine** (`recon-lightning-1788925865`): 94s runtime, 78.26s compute, 1,098.10 DCU-s.
+  - **Outcome**: **Lightning Engine won with 1.44x speedup, 28.2% compute reduction, 28.2% shuffle reduction**, lower cost (~$0.0397 vs ~$0.0425), and 100% exact parity (8,400 rows: 51 Crit / 84 Mon / 8,265 Norm).
+  - Full report documented in [`BENCHMARK_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/BENCHMARK_REPORT.md).
+- [x] **Module 1 / Lab 1 — Dataplex Lineage**: OpenLineage verified connecting 3 lakehouse sources to the gold ledger.
+- [x] **Module 1 / Lab 1 — Cloud Composer Orchestration**: Deployed [`cymbal_nightly_inventory_reconciliation.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/cymbal_nightly_inventory_reconciliation.py) with `DataprocCreateBatchOperator` (Lightning) and `BigQueryCheckOperator` (`COUNT(*) = 8400`). Ad-hoc run triggered.
+- [x] **Monorepo Consolidation**: Stripped nested `.git` folders, updated root [`README.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/README.md), committed and pushed cleanly to `sshi0929/elevate_da_advance` (`main`).
+
+### 4. Immediate Next Action (DA Track)
+* **Module 1 / Lab 2a**: Multimodal POS Hardware Intelligence & Conversational RAG with BigQuery AI ([`02a-pos-manual-generic-rag.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02a-pos-manual-generic-rag.md)) using `AI.GENERATE_TABLE`, `text-embedding-005`, and `gemini-3.5-flash`.
 
 ---
 
-## 🏆 Current Progress & Completed Milestones
+## 🤖 Track 2: AI / Agent School (HR Agent & Two-Pillar Evaluation)
 
-### 1. Module 0 / Day 1: Foundation & Architecture (100% COMPLETE)
-- Reviewed official BRD ([`brd.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_0/elevate-da-adv-day1/brd.md)) covering pilot scope, multi-system orchestration, and evaluation rubric.
-- Deployed baseline Terraform infrastructure under `module_0/elevate-da-adv-day1/deploy/`.
-- Authored and verified the full Solution Design Document ([`sdd.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/sdd.md)).
+### 1. Context & Architecture
+* **Repository**: `https://github.com/tayzar-tznw/elevate` (Fork: `https://github.com/sshi0929/elevate`) under `AI/agent_school/lecture/module3/elevate/`.
+* **Core Reference**: `AI/agent_school/lecture/module3/reference/HR Agentic Solution BRD.md`.
+* **Two-Pillar Evaluation Strategy**:
+  * **Pillar 1 (Production Benchmark)**: Deep evaluation across 70+ test cases via LLM-as-Judge (`gemini-3.7-flash`) achieving **97.0% accuracy** (68/70).
+  * **Pillar 2 (CI/CD Quality Gate)**: Fast deterministic local test runner (`tests/eval/run_local_brd_eval.py`) running in **0.9s** with **$0.00 cost** (100% pass rate, 21/21) enforced in `.github/workflows/eval-ci.yaml` (minimum 95% pass rate required).
 
-### 2. Module 1 / Day 2 — Lab 1: Databricks to Dataproc Migration (100% COMPLETE)
-- **Challenge 1.1 (PySpark Refactor)**: Modernized Databricks notebook into standalone modular PySpark script [`migrated_inventory_reconciliation_pipeline.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/migrated_inventory_reconciliation_pipeline.py). Replaced proprietary widgets with `argparse`, implemented `writeMethod=direct` for BigLake Iceberg writes, and preserved full 7-stage vectorized logic (8,400 positions, 2.42M intraday time slots, $\cos^4$ demand curve, SHA-256 audit hash, cumulative depletion window).
-- **Challenge 1.2 (Multi-Engine Benchmark)**: Evaluated Standard JVM vs. Vectorized Lightning Engine on Dataproc Serverless 2.3:
-  - **Standard Engine** (`recon-standard-1788925596`): Running time 129s, Core compute 112.49s, 1,528.65 DCU-s.
-  - **Lightning Engine** (`recon-lightning-1788925865`): Running time 94s, Core compute 78.26s, 1,098.10 DCU-s.
-  - **Winner**: **Lightning Engine** delivered **1.44x core speedup**, **28.2% compute reduction**, **28.2% shuffle I/O reduction**, and lower net cost (~$0.0397 vs ~$0.0425).
-  - **Data Parity**: Exactly 8,400 rows matching target (51 Critical / 84 Monitor / 8,265 Normal Health).
-  - **Data Lineage**: OpenLineage verified in Dataplex (`default:cymbal_retail_inventory_reconciliation_pipeline`) linking 3 lakehouse inputs to the Gold Iceberg ledger.
-  - **Report**: Full documentation in [`BENCHMARK_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/BENCHMARK_REPORT.md).
-- **Challenge 1.3 (Cloud Composer DAG)**: Authored and deployed [`cymbal_nightly_inventory_reconciliation.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/cymbal_nightly_inventory_reconciliation.py). Scheduled nightly at `0 22 * * *` with `DataprocCreateBatchOperator` (Lightning Engine) and `BigQueryCheckOperator` (`COUNT(*) = 8400`). Ad-hoc run triggered and active.
-- **Git Consolidation**: Stripped nested `.git` repos, organized monorepo, updated root [`README.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/README.md), committed and pushed cleanly to `https://github.com/sshi0929/elevate_da_advance.git` (`main`).
+### 2. Delivered Assets & Merged PRs
+* **PR #7 (Merged)**: `ci(eval): add GitHub Actions BRD evaluation quality gate & test runner`.
+* **PR #9 (Merged)**: `docs(eval): add two-pillar evaluation strategy & NotebookLM source documents`.
+* **Evaluation Assets**: `tests/eval/datasets/brd-eval-data.json`, `brd-eval-multi-turn.json`, `response_quality.py`, `notebooklm_eval_source.md`.
 
 ---
 
-## 🗺️ Project Roadmap & Next Actions
+## ⚙️ Coding Agent & ADK Operational Guidelines (from AGENTS.md)
 
-### Immediate Next Task: Module 1 / Lab 2a
-* **Guide**: [`02a-pos-manual-generic-rag.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02a-pos-manual-generic-rag.md)
-* **Goal**: Multimodal POS Hardware Intelligence & Conversational RAG with BigQuery AI.
-* **Steps**:
-  1. Create BigQuery Object Table `pos_manual_generic_pdfs_objects` over `gs://${PROJECT_ID}-module1-bucket/store_pos_manual_generic/*` using `ObjectRef`.
-  2. Run single-doc smoke test with `AI.GENERATE((prompt, ref))`.
-  3. Structured extraction of technical specifications using `AI.GENERATE_TABLE` with `output_schema`.
-  4. Generate 768d vector embeddings using `AI.EMBED` (`text-embedding-005`).
-  5. In-database semantic retrieval with `VECTOR_SEARCH` and grounded troubleshooting RAG using `gemini-3.5-flash`.
+### 1. CLI Tooling & Commands
+* CLI: `google-agents-cli` (`uv tool install google-agents-cli`).
+* Primary Command Suite:
+  | Command | Purpose |
+  | :--- | :--- |
+  | `agents-cli playground` | Interactive local testing |
+  | `uv run pytest tests/unit tests/integration` | Run unit and integration tests |
+  | `agents-cli eval generate` | Run agent on eval dataset, produce traces |
+  | `agents-cli eval grade` | Run agent evaluations on the traces |
+  | `agents-cli eval compare` | Compare two grade-results files (regression check) |
+  | `agents-cli eval optimize` | Auto-tune agent prompts using eval data |
+  | `agents-cli deploy` | Deploy agent to development environment |
 
-### Subsequent Lab Pipeline
-* **Lab 2b**: [`02b-warranty-multimodal-rag.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/02b-warranty-multimodal-rag.md) — Warranty PDF RAG (`AI.IF`, `AI.CLASSIFY`, stored embeddings, `AI.SEARCH`).
-* **Lab 3**: [`03-bigquery-graph-analytics.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/03-bigquery-graph-analytics.md) — ISO GoogleSQL GQL Property Graph for supply chain defect & recall tracing.
-* **Lab 4**: [`04-data-governance-policy-tags-masking.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/04-data-governance-policy-tags-masking.md) — IAM Data Governance Tags API v3, Dynamic Masking (`SHA256`, `$0.00`, `LAST_FOUR`), and Row-Level Security.
-* **Module 2 (Day 3)**: Real-Time Streaming Intelligence (Kafka, sliding windows, Cloud Bigtable cache <10ms, in-flight inference <100ms).
-* **Module 3 (Day 4)**: Agentic AI Platform (Multi-Agent System, Central Router, SQL/RAG/Cache agents, web chat UI, golden evaluation).
+### 2. Operational Rules for Coding Agents
+* **Code Preservation**: Modify ONLY code directly targeted by the request. Never wipe surrounding context, configurations, or comments.
+* **Model Integrity**: Never alter the model name unless explicitly requested. On 404 errors, check `GOOGLE_CLOUD_LOCATION` (e.g., `global` vs `us-central1`), not the model identifier.
+* **Execution with uv**: Always invoke python via `uv run python script.py`.
+* **Circuit Breaker**: If an identical error recurs 3+ times, diagnose root cause rather than retrying blindly.
+* **Terraform Conflict (409)**: Use `terraform import` rather than recreating conflicting resources.
 
 ---
 
-## ⚠️ Critical Constraints & Gotchas
-1. **BigLake Iceberg Writes**: Do NOT use BigQuery indirect load jobs with `temporaryGcsBucket` (triggers `WRITE_TRUNCATE` unsupported error). Always use `writeMethod=direct`.
+## ⚠️ Critical Cross-Project Constraints & Gotchas
+1. **BigLake Iceberg Writes**: Do NOT use BigQuery indirect load jobs (`temporaryGcsBucket`), which trigger `WRITE_TRUNCATE` unsupported error on Iceberg. Always specify `writeMethod=direct`.
 2. **Lightning Engine Requirements**: Requires `dataproc.tier=premium` and `spark.dataproc.engine=lightningEngine`.
-3. **Single GitHub Repo for Evaluation**: All code across all modules must reside inside `https://github.com/sshi0929/elevate_da_advance.git`. Never nest unconfigured `.git` sub-repos.
-4. **Shell Rules**: Never run `cd` in shell commands. Use absolute paths or `-C` flags.
+3. **Single GitHub Monorepo Rule**: All code across all modules must reside inside `https://github.com/sshi0929/elevate_da_advance.git` without unconfigured nested `.git` sub-repos.
+4. **Shell Navigation**: Never execute raw `cd` in tool commands; use absolute paths or `-C` flags.
