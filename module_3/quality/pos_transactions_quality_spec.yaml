@@ -1,0 +1,19 @@
+rules:
+  - nonNullExpectation: {}
+    column: transaction_id
+    dimension: COMPLETENESS
+    threshold: 1.0
+
+  - rowConditionExpectation:
+      sqlExpression: "total = subtotal_amount - discount + tax_amount"
+    dimension: VALIDITY
+    threshold: 1.0
+
+  - rowConditionExpectation:
+      sqlExpression: "item_count <= total_quantity"
+    dimension: VALIDITY
+    threshold: 1.0
+
+postScanActions:
+  bigqueryExport:
+    resultsTable: "//bigquery.googleapis.com/projects/pj-elevate-da/datasets/cymbal_governance/tables/pos_transactions_quality_results"

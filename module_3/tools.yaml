@@ -1,0 +1,32 @@
+sources:
+  cymbal-bigtable:
+    kind: bigtable
+    project: pj-elevate-da
+    instance: operations-db
+
+tools:
+  get_cashier_realtime_metrics:
+    kind: bigtable-sql
+    source: cymbal-bigtable
+    description: "Query Cloud Bigtable for 1-hour rolling metrics and audit status flags for a cashier at a store using a row key prefix like STORE_048#CASH_1190."
+    statement: |
+      SELECT
+        CAST(_key AS STRING) AS row_key,
+        CAST(flags['audit_status'] AS STRING) AS audit_status,
+        TO_FLOAT64(stats['risk_score']) AS risk_score,
+        TO_INT64(stats['cashier_1h_manual_override_count']) AS cashier_1h_manual_override_count,
+        TO_FLOAT64(stats['cashier_1h_promo_rate']) AS cashier_1h_promo_rate,
+        CAST(stats['last_event_ts'] AS STRING) AS last_event_ts,
+        TO_INT64(stats['cashier_1h_txn_count']) AS cashier_1h_txn_count
+      FROM cashier_realtime_alerts
+      WHERE CAST(_key AS STRING) LIKE @prefix || '%'
+      ORDER BY _key ASC
+      LIMIT 5;
+    parameters:
+      - name: prefix
+        type: string
+        description: "Row key prefix to search, formatted as STORE_<store_id>#CASH_<cashier_id> (e.g. STORE_048#CASH_1190)."
+
+toolsets:
+  cashier_realtime_toolset:
+    - get_cashier_realtime_metrics

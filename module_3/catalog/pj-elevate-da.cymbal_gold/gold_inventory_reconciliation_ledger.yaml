@@ -1,0 +1,21 @@
+name: pj-elevate-da.cymbal_gold/gold_inventory_reconciliation_ledger
+type: dataplex-types.global.bigquery-table
+resource:
+  name: projects/pj-elevate-da/datasets/cymbal_gold/tables/gold_inventory_reconciliation_ledger
+  displayName: gold_inventory_reconciliation_ledger
+  description: Daily reconciled store inventory ledger tracking opening balance,
+    shelf/backroom quantities, intraday revenue, and remaining cover hours for
+    stockout risk analysis.
+  labels:
+    goog-terraform-provisioned: "true"
+    dataplex-dp-published-scan: a22da5b88-9611-466c-9c95-29fae7e8e89a
+    dataplex-dp-published-project: pj-elevate-da
+    datacloud: antigravity
+    dataplex-dp-published-location: us-central1
+  location: us-central1
+  ancestors:
+    - name: projects/pj-elevate-da/datasets/cymbal_gold
+      type: dataplex-types.global.bigquery-dataset
+  createTime: 2026-09-08T04:48:36.249Z
+  updateTime: 2026-09-10T06:27:19.681Z
+aspects: {}

@@ -1,0 +1,12 @@
+name: pj-elevate-da.cymbal_gold/supply_chain_recall_traceability_360
+type: dataplex-types.global.bigquery-view
+resource:
+  name: projects/pj-elevate-da/datasets/cymbal_gold/tables/supply_chain_recall_traceability_360
+  displayName: supply_chain_recall_traceability_360
+  location: us-central1
+  ancestors:
+    - name: projects/pj-elevate-da/datasets/cymbal_gold
+      type: dataplex-types.global.bigquery-dataset
+  createTime: 2026-09-09T06:57:34.699Z
+  updateTime: 2026-09-09T06:57:34.699Z
+aspects: {}

@@ -62,10 +62,12 @@
     3. [`Day2_Spark_lecture1_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Spark_lecture1_transcript.md) (50.1 min / 53K chars)
     4. [`Day2_PropertyGraph_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_PropertyGraph_transcript.md) (24.1 min / 23K chars)
     5. [`Day2_Security_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_Security_transcript.md) (25.5 min / 26K chars)
+    6. [`Day2_wrap-up_transcript.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/Day2_audio/Day2_wrap-up_transcript.md) (25.2 min / 18K chars)
   - All transcripts synced as Google Docs to shared Drive folder: [`DA Elevate Japan Delivery — Transcripts`](https://drive.google.com/drive/folders/1wLXrXEzXt3WQXzogCzDSp4JW0l0MTG4r) (Editor access shared with `takumik@google.com`).
-- [x] **Autonomous Audio Watcher & Drive Synchronization Pipeline**:
+- [x] **Autonomous Audio Watcher & Drive Synchronization Daemon**:
   - Script: [`Japan_delivery/auto_transcribe_and_sync.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/auto_transcribe_and_sync.py).
-  - Standing Rule: Any newly arriving audio clip in `Japan_delivery/` is automatically staged to GCS (`gs://pj-elevate-da-module1-bucket/japan_delivery_audio/`), transcribed via `gemini-3.8-flash` on Vertex AI (verbatim timestamps + executive summary), converted and uploaded to Google Drive folder `1wLXrXEzXt3WQXzogCzDSp4JW0l0MTG4r` as a Google Doc + raw `.md`, and indexed in `00_README`. Local tracking maintained at [`Japan_delivery/sync_manifest.json`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/sync_manifest.json).
+  - Background Daemon: Registered and actively running 24/7 as `systemd --user` service `da-audio-watcher.service` (`systemctl --user status da-audio-watcher.service`, polling every 15s). Logs to [`Japan_delivery/watcher.log`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/watcher.log).
+  - Standing Rule: Any newly arriving audio clip in `Japan_delivery/` is automatically detected, verified for upload completion, staged to GCS (`gs://pj-elevate-da-module1-bucket/japan_delivery_audio/`), transcribed via `gemini-3.8-flash` on Vertex AI (verbatim timestamps + executive summary), converted and uploaded to Google Drive folder `1wLXrXEzXt3WQXzogCzDSp4JW0l0MTG4r` as a Google Doc + raw `.md`, and indexed in `00_README`. Local tracking maintained at [`Japan_delivery/sync_manifest.json`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/Japan_delivery/sync_manifest.json).
 
 - [x] **Module 1 / Lab 3 — BigQuery Property Graph Analytics & Supply Chain Recall (BRD 2.4)**:
   - Installed and verified latest [`bigquery-graph`](file:///usr/local/google/home/watanabesei/.gemini/config/skills/bigquery-graph/SKILL.md) skill from `google/adk-python`.
@@ -89,8 +91,52 @@
     - 🚫 **Restricted User (`sa-restricted`)**: Immediate `403 Forbidden` on protected CLS columns, and `0 rows` returned on RLS ledger (Default Deny).
   - Full scripts saved in [`04_data_governance_pipelines.sql`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/04_data_governance_pipelines.sql) and report in [`LAB4_DATA_GOVERNANCE_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_1/lab_spark/LAB4_DATA_GOVERNANCE_REPORT.md).
 
-### 4. Immediate Next Action (DA Track)
-* **Module 1 All Labs (1, 2a, 2b, 3, 4) Complete!**: Proceed to Module 2 (Advanced Lakehouse Transformations & Feature Store) / Day 3 enablement as soon as assets are published.
+- [x] **Module 2 (Day 3) — Real-Time Stream Ingestion, ML Inference & Continuous Activation**:
+  - **Challenge 1.1 (Kafka -> Pub/Sub)**: Managed Kafka cluster (`kafka-cluster`), Cloud Storage bucket for Dataflow staging, and Pub/Sub topic `pos-transactions-topic` with dead-letter topic `pos-transactions-dead-letter-topic`.
+  - **Challenge 1.2 (Medallion Architecture)**: Single Message Transform (SMT) with JavaScript UDF (`transforms/add_business_date.js`) calculating `business_date` (cutoff 04:00 AM local). Direct Pub/Sub BigQuery subscriptions writing to Bronze (`pos_transactions_raw`), Silver (`pos_transactions_silver` CDC stream with change tracking enabled), and Gold (`pos_transactions_gold`). Verified 0 dead-letter drops and thousands of conformed transactions.
+  - **Challenge 2.1 (Stateless ML Inference)**: Remote model `cymbal_models.order_anomaly_model` evaluating order-level fraud risk on raw payloads. Materialized alerts stream into `cymbal_gold.pos_anomaly_alerts`.
+  - **Challenge 2.2 (Windowed ML Inference)**: Apache Beam streaming pipeline on Cloud Dataflow (`cashier_abuse_pipeline.py`) reading Silver CDC stream, computing 1-hour sliding windows with 10-second updates, calling remote ML endpoint (`cashier_abuse_model`), and directly writing real-time cashier risk stats to Cloud Bigtable (`operations-db:cashier_realtime_alerts`). Verified 92+ `review` audit alerts caught with risk score > 0.9999.
+  - **Challenge 2.3 (Operational Activation & Continuous Queries Reverse ETL)**:
+    - Provisioned Cloud Bigtable table `pos_transactions_enriched` with CF `tx` and CF `alerts`.
+    - Created dedicated Bigtable App Profile `bq-export` with `priority = PRIORITY_LOW`.
+    - Created BigQuery Enterprise Edition reservation `continuous-queries-reservation` (`slot_capacity = 0`, `autoscale.max_slots = 100`) and assigned to project `pj-elevate-da` for `CONTINUOUS` job types.
+- [x] **Module 3 / Lab 1 — Semantic Layer & Metadata as Code (kcmd / kc-mac)**:
+  - Data Quality scan `pos-transactions-quality-scan` executed on `pos_transactions_gold` (10,284 rows, 100% pass score).
+  - Built `mdcode` CLI and installed `~/.local/bin/kcmd`.
+  - Exported and synchronized Dataplex Knowledge Catalog snapshot in `module_3/catalog/` across 10 tables.
+  - Registered `kc-mac` MCP server in `~/.gemini/settings.json` and validated toolset.
+  - Standard table descriptions applied to all 5 core tables via DDL.
+- [x] **Module 3 / Lab 2 — BigQuery Conversational Data Agent (BQCA)**:
+  - Created and published `Cymbal Retail Analytics Data Agent` (`cymbal-retail-analytics-data-agent`) in location **`global`** to eliminate mTLS routing issues.
+  - Scoped to 6 conformed & federated tables across BigQuery and AWS S3 via BigLake catalog: `pos_transactions_gold` (15,046 rows), `pos_anomaly_alerts` (1,296 rows), `gold_inventory_reconciliation_ledger` (8,400 rows), `historical_transactional_data` (22,390 rows), `warranty_generic_sections_extracted` (26 rows), and federated `silver_pos_transactions` (90,816 rows).
+  - Implemented 5-section governance system instruction for table selection, UC 2.1 warranty claim triage, and UC 2.3 cross-cloud cashier audit.
+  - Registered 5 verified GoogleSQL golden queries and 6 enterprise business glossary terms (including custom metric `Shelf Stock Ratio`).
+  - Interactive validation benchmark passed with 100% exact SQL match on all test prompts (UC 1.2, UC 2.1, UC 2.3 Step 1 & Step 2).
+  - Automation scripts and full report delivered in [`configure_data_agent.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/configure_data_agent.py), [`test_data_agent_chat.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/test_data_agent_chat.py), and [`02_BQCA_DATA_AGENT_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/02_BQCA_DATA_AGENT_REPORT.md).
+
+- [x] **Module 3 / Lab 3 — Decoupled 3-Toolset ADK Coordinator Agent (`cymbal_operations_agent`)**:
+  - Engineered production-grade Multi-Tool ADK Agent using **ADK 2.8.0** and **`gemini-3.6-flash`** orchestrating three decoupled toolsets:
+    1. **`cymbal_analytics_tool`**: NL2SQL Data Agent Tool connecting to published BigQuery Conversational Data Agent (`global` endpoint) with verbatim business glossary preservation and exponential backoff.
+    2. **`pos_troubleshooting_rag_tool`**: High-precision vector similarity search (`text-embedding-005`) over 500-char sliding-window chunks (`pos_manual_chunk_embeddings`) with adjacent context stitching ($N-1$ to $N+1$), $\ge 0.70$ relevance guardrail, full-text `SEARCH` fallback, and clickable HTTPS manual links.
+    3. **`bigtable_mcp_toolset`**: Cloud Run MCP Toolbox microservice (`mcp-toolbox-bigtable` in `us-central1`) querying live 1-hour cashier rolling stats and audit status flags in `operations-db:cashier_realtime_alerts` via SSE and OIDC ID Token authentication.
+  - Deployed microservice on Cloud Run mounting Secret Manager configuration (`bigtable-mcp-tools-secret` v2) with Bigtable GoogleSQL typing fixes (`CAST(_key AS STRING)`).
+  - Authored comprehensive intent routing instructions in [`app/prompt.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/app/prompt.py) for Single-Tool, Parallel (UC 2.2), and Sequential Multi-Turn (UC 2.3) dispatches.
+  - Automated benchmark test suite ([`test_agent_scenarios.py`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/test_agent_scenarios.py)) passed with **100% score (7/7)** across all operational scenarios:
+    - UC 1.1a (ERR-PAY-4001 SOP & Toshiba TCx 810 Guide) -> PASS (31.46s)
+    - UC 1.1c (Ford F-150 out-of-scope fallback warning) -> PASS (13.26s)
+    - UC 1.2a (Stockout risk < 20h & total on-hand inventory) -> PASS (70.76s)
+    - UC 1.3 (Real-time CASH_1190 at Store 48 Bigtable telemetry) -> PASS (10.91s)
+    - UC 2.1a (TXN-20260312-0015811 warranty join in BigQuery) -> PASS (148.70s)
+    - UC 2.2 (Dual cashier baseline: **Parallel Dispatch** Turn 1) -> PASS (92.89s)
+    - UC 2.3 (Cross-cloud offender audit: **Sequential Dispatch**) -> PASS (107.01s)
+  - Full delivery report authored in [`03_ADK_MULTI_AGENT_REPORT.md`](file:///usr/local/google/home/watanabesei/account_work/Admin/pj_elevate/DA_advanced/module_3/03_ADK_MULTI_AGENT_REPORT.md).
+
+### 4. Project Elevate Data Analytics Advanced Track Status
+* **All Modules Complete (100%)**:
+  - Module 0 / Day 1: Infrastructure Bootstrap & SDD.
+  - Module 1: PySpark Migration (Lightning vs Standard), Dataplex Lineage, Composer Orchestration, Multimodal POS/Warranty RAG, BigQuery Property Graphs, IAM Governance & Dynamic Masking.
+  - Module 2: Real-Time Medallion Streaming (Kafka $\rightarrow$ Pub/Sub SMT $\rightarrow$ BigQuery CDC), Stateless/Windowed ML Inference (Dataflow $\rightarrow$ Bigtable alerts), Continuous Queries Reverse ETL.
+  - Module 3: Semantic Layer & Metadata as Code (kcmd/kc-mac), Conversational Analytics Data Agent (BQCA), and Decoupled Multi-Tool ADK Coordinator Agent.
 
 ---
 

@@ -1,0 +1,20 @@
+name: pj-elevate-da.cymbal_gold/pos_transactions_gold
+type: dataplex-types.global.bigquery-table
+resource:
+  name: projects/pj-elevate-da/datasets/cymbal_gold/tables/pos_transactions_gold
+  displayName: pos_transactions_gold
+  description: Real-time streaming intraday POS sales transactions with customer
+    PII for daily store revenue and sales KPI monitoring. (Use for today''s
+    sales and daily revenue KPIs).
+  labels:
+    goog-terraform-provisioned: "true"
+    dataplex-dp-published-scan: aa3b5f3a5-88c8-4e92-a3c9-798d6f653593
+    dataplex-dp-published-project: pj-elevate-da
+    dataplex-dp-published-location: us-central1
+  location: us-central1
+  ancestors:
+    - name: projects/pj-elevate-da/datasets/cymbal_gold
+      type: dataplex-types.global.bigquery-dataset
+  createTime: 2026-09-10T02:41:34.705Z
+  updateTime: 2026-09-10T06:27:17.916Z
+aspects: {}
