@@ -1,0 +1,456 @@
+{
+  "fixture_set_id": "cymbal_data_contract_fixtures",
+  "version": "1.0.0",
+  "description": "Executable counterpart to the prose `quality.rules` declared in tests/eval/contracts/. Every assertion id here matches a rule id in the corresponding data contract. BigQuery assertions are single-value SQL probes (one row, one numeric column aliased `value`) compared against operator/threshold; the Cloud Bigtable contract cannot be probed with SQL, so its assertions are declarative SDK checks executed against a bounded row scan. Executed by tests/eval/scripts/validate_contracts.py.",
+  "generated_at": "2026-09-11T02:25:00Z",
+  "conventions": {
+    "sql_result": "Exactly one row, one numeric column aliased `value`.",
+    "operators": [">=", "<=", "==", ">", "<"],
+    "ratio_form": "COUNTIF(<predicate>) / NULLIF(COUNT(*), 0) so the threshold reads as a pass fraction.",
+    "bigtable_checks": [
+      "row_key_prefix_exists",
+      "row_key_regex",
+      "qualifiers_present",
+      "decoded_value_range",
+      "decoded_value_in_set",
+      "row_key_prefix_newest_first",
+      "cross_qualifier_compare"
+    ],
+    "bigtable_encodings": {
+      "be_int64": "struct.unpack('>q', value)",
+      "be_float64": "struct.unpack('>d', value)",
+      "utf8": "value.decode('utf-8')"
+    }
+  },
+  "fixtures": [
+    {
+      "contract": "tests/eval/contracts/bigquery/pos_transactions_gold.contract.yaml",
+      "target": "pj-elevate-da.cymbal_gold.pos_transactions_gold",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "intraday_partition_present",
+          "dimension": "timeliness",
+          "enforced_by": "eval-fixture",
+          "description": "The agent's default `business_date = CURRENT_DATE()` filter must return data while the streaming pipeline is running.",
+          "sql": "SELECT COUNT(*) AS value FROM `pj-elevate-da.cymbal_gold.pos_transactions_gold` WHERE business_date = CURRENT_DATE()",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "total_amount_non_negative",
+          "dimension": "validity",
+          "enforced_by": "not-enforced",
+          "description": "Gold-tier sales totals are never negative.",
+          "sql": "SELECT COUNTIF(total >= 0) / NULLIF(COUNT(*), 0) AS value FROM `pj-elevate-da.cymbal_gold.pos_transactions_gold`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "item_count_matches_items_array",
+          "dimension": "consistency",
+          "enforced_by": "not-enforced",
+          "description": "The scalar item_count agrees with the repeated items record.",
+          "sql": "SELECT COUNTIF(item_count = ARRAY_LENGTH(items)) / NULLIF(COUNT(*), 0) AS value FROM `pj-elevate-da.cymbal_gold.pos_transactions_gold`",
+          "operator": ">=",
+          "threshold": 0.99
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigquery/pos_anomaly_alerts.contract.yaml",
+      "target": "pj-elevate-da.cymbal_gold.pos_anomaly_alerts",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "alert_type_enumerated",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "description": "alert_type is restricted to the two documented model outputs.",
+          "sql": "SELECT COUNTIF(alert_type IN ('order_anomaly','cashier_promo_abuse')) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.pos_anomaly_alerts`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "alert_source_matches_alert_type",
+          "dimension": "consistency",
+          "enforced_by": "not-enforced",
+          "description": "order_anomaly pairs with order_anomaly_model; cashier_promo_abuse pairs with cashier_abuse_model.",
+          "sql": "SELECT COUNTIF((alert_type = 'order_anomaly' AND alert_source = 'order_anomaly_model') OR (alert_type = 'cashier_promo_abuse' AND alert_source = 'cashier_abuse_model')) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.pos_anomaly_alerts`",
+          "operator": ">=",
+          "threshold": 0.99
+        },
+        {
+          "id": "risk_score_probability_range",
+          "dimension": "validity",
+          "enforced_by": "not-enforced",
+          "description": "risk_score is a positive-class probability in [0.0, 1.0].",
+          "sql": "SELECT COUNTIF(risk_score BETWEEN 0.0 AND 1.0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.pos_anomaly_alerts`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "rolling_7day_window_populated",
+          "dimension": "timeliness",
+          "enforced_by": "eval-fixture",
+          "description": "The agent's default 7-day cashier_promo_abuse offender ranking must return a non-empty result.",
+          "sql": "SELECT COUNT(*) AS value FROM `pj-elevate-da.cymbal_gold.pos_anomaly_alerts` WHERE alert_type = 'cashier_promo_abuse' AND alert_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)",
+          "operator": ">=",
+          "threshold": 1.0
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigquery/gold_inventory_reconciliation_ledger.contract.yaml",
+      "target": "pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "cover_hours_non_negative",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "description": "est_cover_hours_remaining is present and non-negative, so the `< 20.0` stockout-risk filter is well defined.",
+          "sql": "SELECT COUNTIF(est_cover_hours_remaining IS NOT NULL AND est_cover_hours_remaining >= 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "reconciliation_status_enumerated",
+          "dimension": "consistency",
+          "enforced_by": "eval-fixture",
+          "description": "Only the three bands emitted by the reconciliation pipeline occur. The literal values written by the PySpark job are 'CRITICAL BURN SPIKE - STOCKOUT RISK' (Critical), 'MONITOR VELOCITY' (Monitor) and 'RECONCILED NORMAL HEALTH' (Normal), matching the 51 / 84 / 8,265 distribution verified in the Module 1 Lab 1 parity benchmark.",
+          "sql": "SELECT COUNTIF(reconciliation_status IN ('CRITICAL BURN SPIKE - STOCKOUT RISK','MONITOR VELOCITY','RECONCILED NORMAL HEALTH')) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "store_item_date_grain_unique",
+          "dimension": "uniqueness",
+          "enforced_by": "not-enforced",
+          "description": "One reconciled position per (business_date, store_id, item_id).",
+          "sql": "SELECT COUNT(DISTINCT CONCAT(CAST(business_date AS STRING), '|', store_id, '|', item_id)) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "quantities_non_negative",
+          "dimension": "validity",
+          "enforced_by": "not-enforced",
+          "description": "shelf_qty, backroom_qty and opening_qty are all non-negative.",
+          "sql": "SELECT COUNTIF(shelf_qty >= 0 AND backroom_qty >= 0 AND opening_qty >= 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger`",
+          "operator": ">=",
+          "threshold": 1.0
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigquery/historical_transactional_data.contract.yaml",
+      "target": "pj-elevate-da.cymbal_gold.historical_transactional_data",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "items_array_non_empty",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "description": "Every transaction carries at least one line item, so warranty triage UNNEST joins never silently drop transactions.",
+          "sql": "SELECT COUNTIF(ARRAY_LENGTH(items) >= 1) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "item_id_joinable_to_warranty_catalog",
+          "dimension": "consistency",
+          "enforced_by": "eval-fixture",
+          "description": "The UC 2.1 warranty triage join key convention holds across clouds: item.item_id values do resolve against warranty_generic_sections_extracted.product_id. Measured as the number of distinct item_ids that join; a value of 0 would mean the join key convention has drifted and every warranty answer would silently report 'uncovered'.",
+          "sql": "SELECT COUNT(DISTINCT item.item_id) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data` tx, UNNEST(tx.items) AS item JOIN `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted` warr ON item.item_id = warr.product_id",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "transaction_id_not_null",
+          "dimension": "completeness",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNTIF(transaction_id IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "transaction_id_unique",
+          "dimension": "uniqueness",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNT(DISTINCT transaction_id) / NULLIF(COUNT(transaction_id),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "business_date_not_null",
+          "dimension": "completeness",
+          "enforced_by": "not-enforced",
+          "description": "business_date is the DAY partitioning key.",
+          "sql": "SELECT COUNTIF(business_date IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "total_amount_usd_non_negative",
+          "dimension": "validity",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNTIF(total_amount_usd >= 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "item_count_matches_items_array",
+          "dimension": "consistency",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNTIF(item_count = ARRAY_LENGTH(items)) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal_gold.historical_transactional_data`",
+          "operator": ">=",
+          "threshold": 1.0
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigquery/warranty_generic_sections_extracted.contract.yaml",
+      "target": "pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "product_id_not_null",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "sql": "SELECT COUNTIF(product_id IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "product_id_unique",
+          "dimension": "uniqueness",
+          "enforced_by": "eval-fixture",
+          "description": "One warranty policy row per product, so the UC 2.1 join cannot fan out.",
+          "sql": "SELECT COUNT(DISTINCT product_id) / NULLIF(COUNT(product_id),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "product_name_not_null",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "sql": "SELECT COUNTIF(product_name IS NOT NULL AND product_name != '') / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "retail_price_present_and_positive",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "sql": "SELECT COUNTIF(retail_price_usd IS NOT NULL AND retail_price_usd > 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "warranty_duration_present_and_positive",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "description": "warranty_duration_months drives the DATE_DIFF coverage decision, so a NULL or non-positive value would silently deny valid claims.",
+          "sql": "SELECT COUNTIF(warranty_duration_months IS NOT NULL AND warranty_duration_months > 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "extracted_content_minimum_length",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "description": "Lab 2b quality gate: every extracted certificate retains at least 800 verbatim characters for grounding.",
+          "sql": "SELECT COUNTIF(LENGTH(extracted_full_content) >= 800) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "row_count_matches_pdf_corpus",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "description": "Extracted row count equals the number of warranty certificate PDFs exposed by the object table, so no PDF was dropped by AI.GENERATE_TABLE.",
+          "sql": "SELECT CAST((SELECT COUNT(*) FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted`) = (SELECT COUNT(*) FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_pdfs_objects`) AS INT64) AS value",
+          "operator": "==",
+          "threshold": 1.0
+        },
+        {
+          "id": "source_pdf_uri_resolvable",
+          "dimension": "consistency",
+          "enforced_by": "not-enforced",
+          "description": "Every source_pdf_uri points at an object present in the warranty_generic_pdfs_objects object table.",
+          "sql": "SELECT COUNTIF(warr.source_pdf_uri IN (SELECT obj.uri FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_pdfs_objects` obj)) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted` warr",
+          "operator": ">=",
+          "threshold": 1.0
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigquery/silver_pos_transactions.contract.yaml",
+      "target": "pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions",
+      "platform": "bigquery",
+      "assertions": [
+        {
+          "id": "federated_catalog_readable",
+          "dimension": "timeliness",
+          "enforced_by": "eval-fixture",
+          "description": "A bounded SELECT against the federated AWS S3 Iceberg table returns without a BigLake catalog or Iceberg metadata error, confirming the cross-cloud binding is live at query time.",
+          "sql": "SELECT COUNT(*) AS value FROM (SELECT transaction_id FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions` LIMIT 10)",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "cashier_id_not_null",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "description": "No checkout escapes the UC 2.3 cross-cloud cashier audit.",
+          "sql": "SELECT COUNTIF(cashier_id IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "event_timestamp_parseable",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "description": "event_timestamp is a STRING in the Iceberg source; every value must SAFE_CAST to TIMESTAMP so ORDER BY event_timestamp is chronologically meaningful.",
+          "sql": "SELECT COUNTIF(SAFE_CAST(event_timestamp AS TIMESTAMP) IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "cashier_id_consistent_with_gcp_alerts",
+          "dimension": "consistency",
+          "enforced_by": "eval-fixture",
+          "description": "cashier_id follows the same CASH_#### convention used by pos_anomaly_alerts, so the UC 2.3 Step 1 -> Step 2 handoff joins without normalisation.",
+          "sql": "SELECT COUNTIF(REGEXP_CONTAINS(cashier_id, r'^CASH_[0-9]+$')) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "transaction_id_not_null",
+          "dimension": "completeness",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNTIF(transaction_id IS NOT NULL) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "transaction_id_unique",
+          "dimension": "uniqueness",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNT(DISTINCT transaction_id) / NULLIF(COUNT(transaction_id),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        },
+        {
+          "id": "total_amount_usd_non_negative",
+          "dimension": "validity",
+          "enforced_by": "not-enforced",
+          "sql": "SELECT COUNTIF(total_amount_usd >= 0) / NULLIF(COUNT(*),0) AS value FROM `pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions`",
+          "operator": ">=",
+          "threshold": 1.0
+        }
+      ]
+    },
+    {
+      "contract": "tests/eval/contracts/bigtable/cashier_realtime_alerts.contract.yaml",
+      "target": "operations-db:cashier_realtime_alerts",
+      "platform": "bigtable",
+      "instance": "operations-db",
+      "table": "cashier_realtime_alerts",
+      "scan": {
+        "limit": 2000,
+        "comment": "Default bounded scan used by assertions that do not declare their own row_key_prefix. Bigtable has no SQL surface, so coverage is a bounded row sample rather than a full-table aggregate."
+      },
+      "preconditions": [
+        {
+          "check": "row_key_prefix_exists",
+          "row_key_prefix": "STORE_048#CASH_1190",
+          "expect_min_rows": 1,
+          "description": "The UC 1.3 / UC 2.2 target cashier position must be present, otherwise every live-data eval case degrades to 'cashier offline' and the benchmark stops exercising the Bigtable path."
+        }
+      ],
+      "assertions": [
+        {
+          "id": "row_key_format_valid",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "check": "row_key_regex",
+          "pattern": "^STORE_[0-9]{3}#CASH_[0-9]+#[0-9]+$",
+          "description": "Row keys follow STORE_<3 digits>#CASH_<digits>#<reversed timestamp>; the agent tool builds this key with f\"STORE_{int(n):03d}\" / f\"CASH_{n}\"."
+        },
+        {
+          "id": "risk_score_in_unit_range",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "check": "decoded_value_range",
+          "column_family": "stats",
+          "qualifiers": ["risk_score"],
+          "encoding": "be_float64",
+          "min": 0.0,
+          "max": 1.0
+        },
+        {
+          "id": "audit_status_allowed_values",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "check": "decoded_value_in_set",
+          "column_family": "flags",
+          "qualifiers": ["audit_status"],
+          "encoding": "utf8",
+          "allowed": ["clear", "review"]
+        },
+        {
+          "id": "counters_non_negative",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "check": "decoded_value_range",
+          "column_family": "stats",
+          "qualifiers": ["cashier_1h_txn_count", "cashier_1h_manual_override_count"],
+          "encoding": "be_int64",
+          "min": 0
+        },
+        {
+          "id": "promo_rate_in_unit_range",
+          "dimension": "validity",
+          "enforced_by": "eval-fixture",
+          "check": "decoded_value_range",
+          "column_family": "stats",
+          "qualifiers": ["cashier_1h_promo_rate"],
+          "encoding": "be_float64",
+          "min": 0.0,
+          "max": 1.0,
+          "description": "Stored as a fraction and rendered as a percentage by the agent tool."
+        },
+        {
+          "id": "core_qualifiers_present",
+          "dimension": "completeness",
+          "enforced_by": "eval-fixture",
+          "check": "qualifiers_present",
+          "columns": ["stats:risk_score", "stats:cashier_1h_txn_count", "flags:audit_status"],
+          "description": "Every returned row carries the qualifiers the agent renders, so no metric silently falls back to the tool's 0.0 / 0 / 'unknown' placeholder."
+        },
+        {
+          "id": "newest_row_first_on_prefix_scan",
+          "dimension": "timeliness",
+          "enforced_by": "eval-fixture",
+          "check": "row_key_prefix_newest_first",
+          "row_key_prefix": "STORE_048#CASH_1190",
+          "expect_min_rows": 1,
+          "description": "A prefix scan returns the most recent event first. Bigtable scans lexicographically, so this holds only if every reversed-timestamp suffix under the prefix is written with the same digit width and decreases monotonically with recency."
+        },
+        {
+          "id": "override_count_not_exceeding_txn_count",
+          "dimension": "consistency",
+          "enforced_by": "not-enforced",
+          "check": "cross_qualifier_compare",
+          "column_family": "stats",
+          "left": "cashier_1h_manual_override_count",
+          "right": "cashier_1h_txn_count",
+          "encoding": "be_int64",
+          "operator": "<="
+        }
+      ]
+    }
+  ]
+}

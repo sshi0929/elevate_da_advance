@@ -55,7 +55,7 @@ def get_bigtable_mcp_toolset() -> McpToolset:
     connection_params = SseConnectionParams(
         url=f"{BIGTABLE_MCP_URL}/mcp/sse",
         headers=headers,
-        timeout=30.0,
+        timeout=90.0,
     )
     return McpToolset(connection_params=connection_params)
 

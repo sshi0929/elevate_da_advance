@@ -1,0 +1,52 @@
+{
+  "_generated": "DO NOT EDIT. Generated from tests/eval/eval_config.yaml by tests/eval/scripts/sync_adk_assets.py",
+  "_tier": "livedata",
+  "criteria": {
+    "hallucinations_v1": {
+      "threshold": 0.6,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-3.8-flash"
+      }
+    },
+    "rubric_based_tool_use_quality_v1": {
+      "threshold": 0.7,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-3.8-flash"
+      },
+      "rubrics": [
+        {
+          "rubricId": "live_tool_invoked",
+          "type": "TOOL_USE_QUALITY",
+          "rubricContent": {
+            "textProperty": "The agent invokes a live Cloud Bigtable telemetry tool (either 'get_cashier_realtime_metrics' or 'read_cashier_realtime_metrics') to obtain the real-time rolling cashier metrics requested by the user."
+          },
+          "description": "Confirms the agent routes real-time cashier telemetry intent to the Bigtable toolset rather than answering from memory or from BigQuery alone."
+        },
+        {
+          "rubricId": "correct_store_cashier_targeting",
+          "type": "TOOL_USE_QUALITY",
+          "rubricContent": {
+            "textProperty": "The arguments passed to the live Bigtable telemetry tool correctly identify the store and cashier named in the user prompt. Accept either a row-key prefix argument of the form 'STORE_048#CASH_1190' or separate store_id='STORE_048' and cashier_id='CASH_1190' arguments. Zero-padding of the store number (48 -> STORE_048) must be applied correctly."
+          },
+          "description": "Verifies correct entity resolution and row-key normalisation for the Bigtable lookup."
+        },
+        {
+          "rubricId": "historical_baseline_when_requested",
+          "type": "TOOL_USE_QUALITY",
+          "rubricContent": {
+            "textProperty": "If, and only if, the user prompt asks for a historical or baseline comparison (for example a 7-day override baseline), the agent also invokes 'cymbal_analytics_tool' to retrieve that historical figure from BigQuery. If the user prompt asks only for live metrics, this property is satisfied vacuously and the verdict is yes."
+          },
+          "description": "Checks multi-tool dispatch: live Bigtable plus BigQuery analytics when a comparison is requested."
+        },
+        {
+          "rubricId": "no_fabricated_tool_input",
+          "type": "TOOL_USE_QUALITY",
+          "rubricContent": {
+            "textProperty": "Every argument value supplied to the tools can be traced back to the user prompt or to the output of a prior tool call in the same conversation. The agent does not invent store IDs, cashier IDs, date ranges, or row keys that were never mentioned or returned."
+          },
+          "description": "Guards against hallucinated tool inputs during multi-step dispatch."
+        }
+      ]
+    }
+  }
+}

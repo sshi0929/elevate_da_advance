@@ -1,0 +1,398 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: cymbal_gold.historical_transactional_data
+  display_name: Historical POS Transactional Data (Warranty & Returns Triage)
+  version: 1.0.0
+  status: active
+  layer: gold
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [pos, transactions, warranty, returns, historical, gold, bqca]
+provider:
+  platform: bigquery
+  project: pj-elevate-da
+  dataset: cymbal_gold
+  table: historical_transactional_data
+  fully_qualified_name: pj-elevate-da.cymbal_gold.historical_transactional_data
+  region: us-central1
+  table_type: TABLE
+  physical:
+    partitioning: DAY on business_date
+    clustering: transaction_id, store_id, customer_id
+    observed_row_count: 22390
+    observed_at: "2026-09-11T02:07:00Z"
+description: |
+  Historical customer item purchase transactions used strictly for product warranty claims
+  triage and returns eligibility, as stated in the deployed BigQuery table description.
+  Each row is one completed checkout, with the purchased line items carried in the repeated
+  RECORD column `items`, which must be flattened with `UNNEST(tx.items) AS item` before it can
+  be joined to warranty policy terms on `item.item_id = warr.product_id`. The Cymbal Retail
+  Analytics Data Agent uses this table for customer purchase verification: it locates purchase
+  facts by `transaction_id` or `customer_id`, then compares
+  `DATE_DIFF(CURRENT_DATE(), tx.business_date, MONTH)` against the product warranty duration
+  to determine whether coverage is still active.
+lineage:
+  produced_by: unknown
+  upstream:
+    - unknown (historical POS checkout export loaded into the cymbal_gold dataset; the
+      `_source_file`, `_batch_id` and `_msk_message_id` audit columns indicate a batch load of
+      MSK-sourced checkout events)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+schema:
+  - name: transaction_id
+    type: STRING
+    mode: NULLABLE
+    description: Unique identifier of the completed checkout transaction.
+    description_source: authored
+    semantic: identifier
+    classification: internal
+  - name: event_timestamp
+    type: TIMESTAMP
+    mode: NULLABLE
+    description: UTC timestamp at which the checkout event occurred.
+    description_source: authored
+    semantic: timestamp
+    classification: internal
+  - name: store_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the Cymbal Retail storefront where the transaction occurred.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: store_name
+    type: STRING
+    mode: NULLABLE
+    description: Human readable name of the storefront.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: global_region
+    type: STRING
+    mode: NULLABLE
+    description: Global sales region the storefront belongs to.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: pos_terminal_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the point-of-sale terminal that processed the checkout.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: cashier_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the cashier operating the terminal for this transaction.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: customer_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the purchasing customer, used to look up prior purchases.
+    description_source: authored
+    semantic: identifier
+    classification: pii
+  - name: customer_name
+    type: STRING
+    mode: NULLABLE
+    description: Full name of the purchasing customer.
+    description_source: authored
+    semantic: dimension
+    classification: pii
+  - name: customer_loyalty_tier
+    type: STRING
+    mode: NULLABLE
+    description: Loyalty program tier of the purchasing customer.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: payment_method
+    type: STRING
+    mode: NULLABLE
+    description: Payment method used at checkout.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: payment_network
+    type: STRING
+    mode: NULLABLE
+    description: Card payment network used to authorize the transaction.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: card_bin
+    type: STRING
+    mode: NULLABLE
+    description: Bank identification number prefix of the payment card.
+    description_source: authored
+    semantic: dimension
+    classification: confidential
+  - name: card_number
+    type: STRING
+    mode: NULLABLE
+    description: Payment card number as recorded on the checkout event.
+    description_source: authored
+    semantic: identifier
+    classification: pii
+  - name: is_contactless
+    type: BOOLEAN
+    mode: NULLABLE
+    description: Whether the payment was tendered contactlessly.
+    description_source: authored
+    semantic: flag
+    classification: internal
+  - name: currency
+    type: STRING
+    mode: NULLABLE
+    description: Currency code of the transaction monetary amounts.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: item_count
+    type: INTEGER
+    mode: NULLABLE
+    description: Number of distinct line items on the transaction.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: total_item_quantity
+    type: INTEGER
+    mode: NULLABLE
+    description: Total number of units purchased across all line items.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: subtotal_amount
+    type: FLOAT
+    mode: NULLABLE
+    description: Transaction subtotal before tax, in the transaction currency.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: subtotal_amount_usd
+    type: FLOAT
+    mode: NULLABLE
+    description: Transaction subtotal before tax, converted to USD.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: discount_amount
+    type: FLOAT
+    mode: NULLABLE
+    description: Total discount applied to the transaction, in the transaction currency.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: tax_amount
+    type: FLOAT
+    mode: NULLABLE
+    description: Total tax charged on the transaction, in the transaction currency.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: total_amount
+    type: FLOAT
+    mode: NULLABLE
+    description: Total amount tendered for the transaction, in the transaction currency.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: total_amount_usd
+    type: FLOAT
+    mode: NULLABLE
+    description: Total amount tendered for the transaction, converted to USD.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: promo_code_applied
+    type: STRING
+    mode: NULLABLE
+    description: Promotional code applied at checkout, if any.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: manual_discount_flag
+    type: BOOLEAN
+    mode: NULLABLE
+    description: Whether the cashier applied a manual discount override on this transaction.
+    description_source: authored
+    semantic: flag
+    classification: internal
+  - name: items
+    type: RECORD
+    mode: REPEATED
+    description: Repeated array of purchased line items; must be flattened with UNNEST(tx.items) AS item before joining to warranty policy terms on item.item_id = warr.product_id.
+    description_source: authored
+    semantic: nested
+    classification: internal
+    fields:
+      - name: line_seq
+        type: INTEGER
+        mode: NULLABLE
+        description: Sequence number of the line item within the transaction.
+        description_source: authored
+        semantic: dimension
+        classification: internal
+      - name: item_id
+        type: STRING
+        mode: NULLABLE
+        description: Product identifier of the purchased item; join key to warranty_generic_sections_extracted.product_id.
+        description_source: authored
+        semantic: identifier
+        classification: internal
+      - name: item_name
+        type: STRING
+        mode: NULLABLE
+        description: Product name of the purchased item.
+        description_source: authored
+        semantic: dimension
+        classification: internal
+      - name: category
+        type: STRING
+        mode: NULLABLE
+        description: Merchandise category of the purchased item.
+        description_source: authored
+        semantic: dimension
+        classification: internal
+      - name: quantity
+        type: INTEGER
+        mode: NULLABLE
+        description: Number of units purchased for this line item.
+        description_source: authored
+        semantic: measure
+        classification: internal
+      - name: unit_price
+        type: FLOAT
+        mode: NULLABLE
+        description: Unit price of the item at time of sale.
+        description_source: authored
+        semantic: measure
+        classification: internal
+      - name: total
+        type: FLOAT
+        mode: NULLABLE
+        description: Gross line amount for this item before discount.
+        description_source: authored
+        semantic: measure
+        classification: internal
+      - name: discount
+        type: FLOAT
+        mode: NULLABLE
+        description: Discount applied to this line item.
+        description_source: authored
+        semantic: measure
+        classification: internal
+      - name: item_net_amount
+        type: FLOAT
+        mode: NULLABLE
+        description: Net line amount for this item after discount.
+        description_source: authored
+        semantic: measure
+        classification: internal
+  - name: _ingested_at
+    type: STRING
+    mode: NULLABLE
+    description: Ingestion audit column recording when the record was loaded, stored as a string.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: _source_file
+    type: STRING
+    mode: NULLABLE
+    description: Ingestion audit column recording the source file the record was loaded from.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: _batch_id
+    type: STRING
+    mode: NULLABLE
+    description: Ingestion audit column recording the load batch identifier.
+    description_source: authored
+    semantic: identifier
+    classification: internal
+  - name: _msk_message_id
+    type: STRING
+    mode: NULLABLE
+    description: Ingestion audit column carrying the originating Kafka/MSK message identifier.
+    description_source: authored
+    semantic: identifier
+    classification: internal
+  - name: business_date
+    type: DATE
+    mode: NULLABLE
+    description: Business date of the transaction; the daily partitioning key and the basis for warranty elapsed-month calculations.
+    description_source: authored
+    semantic: date
+    classification: internal
+service_levels:
+  freshness: unknown
+  retention: unknown
+  availability: BigQuery regional SLA for the us-central1 multi-tenant service (Google Cloud BigQuery SLA).
+quality:
+  rules:
+    - id: transaction_id_not_null
+      dimension: completeness
+      column: transaction_id
+      assertion: COUNT(*) WHERE transaction_id IS NULL = 0
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: transaction_id_unique
+      dimension: uniqueness
+      column: transaction_id
+      assertion: COUNT(DISTINCT transaction_id) = COUNT(transaction_id)
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: business_date_not_null
+      dimension: completeness
+      column: business_date
+      assertion: COUNT(*) WHERE business_date IS NULL = 0 (required because business_date is the DAY partitioning key)
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: items_array_non_empty
+      dimension: completeness
+      column: items
+      assertion: ARRAY_LENGTH(items) >= 1 for every row, so warranty triage UNNEST joins never silently drop transactions
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: item_id_joinable_to_warranty_catalog
+      dimension: consistency
+      column: items.item_id
+      assertion: Every item.item_id used in a warranty triage query either matches warranty_generic_sections_extracted.product_id or is explicitly reported as uncovered
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: total_amount_usd_non_negative
+      dimension: validity
+      column: total_amount_usd
+      assertion: total_amount_usd >= 0
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: item_count_matches_items_array
+      dimension: consistency
+      column: item_count
+      assertion: item_count = ARRAY_LENGTH(items)
+      threshold: 1.0
+      enforced_by: not-enforced
+governance:
+  classification: confidential
+  pii_columns: [customer_id, customer_name, card_number]
+  column_level_security: >-
+    No BigQuery policy tags or data governance tags are attached to this table in the observed
+    snapshot. The Lab 4 column-level security controls (Cloud Resource Manager tag key
+    `pii_classification` plus DATA_MASKING_POLICY / RAW_DATA_ACCESS_POLICY data policies) were
+    applied to the separate working table `pj-elevate-da.cymbal_gold.aws_pos_transactions_gold2`,
+    not to this table. The PII and payment columns listed above are therefore currently protected
+    only by dataset-level IAM.
+  row_level_security: >-
+    No row access policies are defined on this table in the observed snapshot. The Lab 4 row-level
+    security policies (`rls_unrestricted_lead`, `rls_analyst_stores`) were applied to
+    `pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger2`, not to this table.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_2.1a_warranty_transaction

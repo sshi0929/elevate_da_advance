@@ -1,0 +1,229 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: cymbal-lakehouse.elevate_data.silver_pos_transactions
+  display_name: Silver POS Transactions (Federated AWS S3 Iceberg)
+  version: 1.0.0
+  status: active
+  layer: silver
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [pos, transactions, silver, federated, aws, s3, iceberg, biglake, cross-cloud, bqca]
+provider:
+  platform: biglake-iceberg-federated
+  project: pj-elevate-da
+  dataset: cymbal-lakehouse.elevate_data
+  table: silver_pos_transactions
+  fully_qualified_name: pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions
+  region: us-central1
+  table_type: TABLE
+  physical:
+    partitioning: none
+    clustering: none
+    observed_row_count: unavailable (federated external table)
+    observed_at: "2026-09-11T02:07:00Z"
+  federation:
+    catalog: BigLake REST Catalog
+    source_cloud: AWS
+    source_format: Apache Iceberg
+    catalog_binding: pj-elevate-da.cymbal-lakehouse.elevate_data
+description: |
+  Conformed silver-layer point-of-sale checkout logs that physically reside in Apache Iceberg
+  tables on AWS S3 and are read from BigQuery through the BigLake REST Catalog federation
+  `pj-elevate-da.cymbal-lakehouse.elevate_data`; no copy of the data is made in Google Cloud.
+  Each row is one checkout event with store, terminal, cashier, customer, payment and monetary
+  attributes, plus a product-safety flag `contains_harmful_batch`. The deployed table carries no
+  description and the federated catalog does not report row or byte counts, so physical volume is
+  not observable from the BigQuery snapshot. The Cymbal Retail Analytics Data Agent uses this
+  table as Step 2 of the UC 2.3 cross-cloud audit: after ranking promo-abuse offenders in
+  BigQuery, it filters these raw AWS-resident logs by the offending `cashier_id` to inspect the
+  underlying checkouts without moving data across clouds.
+lineage:
+  produced_by: unknown (silver conforming layer maintained on the AWS side of the lakehouse and published as Apache Iceberg)
+  upstream:
+    - unknown (AWS S3 Iceberg bronze POS checkout events, registered in the remote catalog federated as pj-elevate-da.cymbal-lakehouse.elevate_data)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+schema:
+  - name: transaction_id
+    type: STRING
+    mode: NULLABLE
+    description: Unique identifier of the checkout transaction.
+    description_source: authored
+    semantic: identifier
+    classification: internal
+  - name: event_timestamp
+    type: STRING
+    mode: NULLABLE
+    description: Timestamp of the checkout event, materialized as a STRING in the Iceberg source rather than a native TIMESTAMP.
+    description_source: authored
+    semantic: timestamp
+    classification: internal
+  - name: store_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the Cymbal Retail storefront where the checkout occurred.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: store_name
+    type: STRING
+    mode: NULLABLE
+    description: Human readable name of the storefront.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: global_region
+    type: STRING
+    mode: NULLABLE
+    description: Global sales region the storefront belongs to.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: pos_terminal_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the point-of-sale terminal that processed the checkout.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: cashier_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the cashier operating the terminal; the filter predicate used in the UC 2.3 cross-cloud offender audit.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: customer_id
+    type: STRING
+    mode: NULLABLE
+    description: Identifier of the purchasing customer.
+    description_source: authored
+    semantic: identifier
+    classification: pii
+  - name: customer_name
+    type: STRING
+    mode: NULLABLE
+    description: Full name of the purchasing customer.
+    description_source: authored
+    semantic: dimension
+    classification: pii
+  - name: customer_loyalty_tier
+    type: STRING
+    mode: NULLABLE
+    description: Loyalty program tier of the purchasing customer.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: payment_method
+    type: STRING
+    mode: NULLABLE
+    description: Payment method used at checkout.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: total_item_quantity
+    type: INTEGER
+    mode: NULLABLE
+    description: Total number of units purchased on the transaction.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: total_amount
+    type: FLOAT
+    mode: NULLABLE
+    description: Total amount tendered for the transaction, in the transaction currency.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: total_amount_usd
+    type: FLOAT
+    mode: NULLABLE
+    description: Total amount tendered for the transaction, converted to USD.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: currency
+    type: STRING
+    mode: NULLABLE
+    description: Currency code of the transaction monetary amounts.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: contains_harmful_batch
+    type: BOOLEAN
+    mode: NULLABLE
+    description: Whether the transaction includes an item from a batch lot flagged as harmful for product safety and recall workflows.
+    description_source: authored
+    semantic: flag
+    classification: internal
+service_levels:
+  freshness: unknown (governed by the AWS-side Iceberg silver pipeline and remote catalog commit cadence, which is not observable from BigQuery)
+  retention: unknown
+  availability: >-
+    Not covered by the BigQuery storage SLA. Query availability depends on the BigQuery compute
+    SLA in us-central1 AND on the availability of the remote AWS-side Apache Iceberg catalog
+    reached through the BigLake REST Catalog federation, plus the underlying S3 object store and
+    cross-cloud network path. An outage or schema change in the AWS catalog will fail queries even
+    when BigQuery is healthy.
+quality:
+  rules:
+    - id: transaction_id_not_null
+      dimension: completeness
+      column: transaction_id
+      assertion: COUNT(*) WHERE transaction_id IS NULL = 0
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: transaction_id_unique
+      dimension: uniqueness
+      column: transaction_id
+      assertion: COUNT(DISTINCT transaction_id) = COUNT(transaction_id)
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: cashier_id_not_null
+      dimension: completeness
+      column: cashier_id
+      assertion: COUNT(*) WHERE cashier_id IS NULL = 0, so no checkout escapes the cross-cloud cashier audit
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: event_timestamp_parseable
+      dimension: validity
+      column: event_timestamp
+      assertion: Every event_timestamp string parses successfully with SAFE_CAST(event_timestamp AS TIMESTAMP) so that ORDER BY event_timestamp is chronologically meaningful
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: total_amount_usd_non_negative
+      dimension: validity
+      column: total_amount_usd
+      assertion: total_amount_usd >= 0
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: federated_catalog_readable
+      dimension: timeliness
+      column: '*'
+      assertion: A bounded SELECT against the federated table returns without a BigLake catalog or AWS Iceberg metadata error, confirming the cross-cloud binding is live at query time
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: cashier_id_consistent_with_gcp_alerts
+      dimension: consistency
+      column: cashier_id
+      assertion: cashier_id values follow the same CASH_#### convention used by pj-elevate-da.cymbal_gold.pos_anomaly_alerts, so the Step 1 to Step 2 handoff in UC 2.3 joins without normalization
+      threshold: 1.0
+      enforced_by: eval-fixture
+governance:
+  classification: confidential
+  pii_columns: [customer_id, customer_name]
+  column_level_security: >-
+    No BigQuery policy tags or data governance tags are attached to this federated table in the
+    observed snapshot, and BigQuery column-level security cannot be relied on to protect data that
+    is physically governed on the AWS side. Access is controlled by IAM on the BigLake connection
+    and the federated catalog `pj-elevate-da.cymbal-lakehouse.elevate_data`, combined with the
+    AWS-side permissions granted to the underlying S3 Iceberg objects.
+  row_level_security: >-
+    No row access policies are defined on this federated table in the observed snapshot; any
+    principal able to read the federated catalog sees all rows, including the customer PII columns.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_2.3_cross-cloud_offender_audit_sequential_dispatch

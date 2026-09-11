@@ -1,0 +1,309 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: cymbal_gold.pos_transactions_gold
+  display_name: Cymbal Retail — Intraday POS Sales Transactions (Gold)
+  version: 1.0.0
+  status: active
+  layer: gold
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [pos, transactions, streaming, medallion-gold, sales-kpi, customer-pii, bqca]
+provider:
+  platform: bigquery
+  project: pj-elevate-da
+  dataset: cymbal_gold
+  table: pos_transactions_gold
+  fully_qualified_name: pj-elevate-da.cymbal_gold.pos_transactions_gold
+  region: us-central1
+  table_type: TABLE
+  physical:
+    partitioning: DAY on business_date
+    clustering: none
+    observed_row_count: 64649
+    observed_at: "2026-09-11T02:07:00Z"
+description: |
+  Real-time streaming intraday POS sales transactions with customer PII for daily store
+  revenue and sales KPI monitoring, used for today's sales and daily revenue KPIs. Each row
+  is one completed checkout at a Cymbal Retail storefront, carrying payment, discount and
+  tender attributes plus a repeated `items` record holding the basket line items. The
+  Cymbal Retail Analytics Data Agent (BQCA) treats this as the authoritative source for
+  intraday sales checkouts and filters on `business_date = CURRENT_DATE()` unless an explicit
+  date range is requested. Historical (multi-day) purchase lookups and warranty claims are
+  intentionally routed to `historical_transactional_data` instead of this table.
+lineage:
+  produced_by: >-
+    Module 2 Challenge 1.2 medallion streaming path — Managed Kafka `kafka-cluster` -> Pub/Sub
+    topic `pos-transactions-topic` (Single Message Transform JavaScript UDF
+    `transforms/add_business_date.js` derives `business_date` with a 04:00 local cutoff) ->
+    direct Pub/Sub BigQuery subscription writing the Gold tier.
+  upstream:
+    - Managed Service for Apache Kafka cluster `kafka-cluster` (POS checkout events)
+    - Pub/Sub topic pos-transactions-topic (DLQ: pos-transactions-dead-letter-topic)
+    - pj-elevate-da.cymbal_gold.pos_transactions_raw (Bronze)
+    - pj-elevate-da.cymbal_gold.pos_transactions_silver (Silver CDC stream)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+    - cymbal_operations_agent (ADK coordinator, via cymbal_analytics_tool)
+    - Dataplex data quality scan `pos-transactions-quality-scan`
+    - Module 2 Challenge 2.1 remote model cymbal_models.order_anomaly_model (anomaly scoring)
+schema:
+  - name: transaction_id
+    type: STRING
+    mode: NULLABLE
+    description: Unique transaction ID
+    semantic: identifier
+    classification: internal
+  - name: event_timestamp
+    type: TIMESTAMP
+    mode: NULLABLE
+    description: POS transaction event timestamp
+    semantic: timestamp
+    classification: internal
+  - name: business_date
+    type: DATE
+    mode: NULLABLE
+    description: Date portion of event_timestamp for partitioning
+    semantic: date
+    classification: internal
+  - name: store_id
+    type: STRING
+    mode: NULLABLE
+    description: Store ID
+    semantic: dimension
+    classification: internal
+  - name: pos_terminal_id
+    type: STRING
+    mode: NULLABLE
+    description: POS Terminal ID
+    semantic: dimension
+    classification: internal
+  - name: cashier_id
+    type: STRING
+    mode: NULLABLE
+    description: Cashier ID
+    semantic: identifier
+    classification: confidential
+  - name: customer_id
+    type: STRING
+    mode: NULLABLE
+    description: Customer ID
+    semantic: identifier
+    classification: pii
+  - name: customer_loyalty_tier
+    type: STRING
+    mode: NULLABLE
+    description: Customer loyalty tier
+    semantic: dimension
+    classification: internal
+  - name: payment_method
+    type: STRING
+    mode: NULLABLE
+    description: Payment method
+    semantic: dimension
+    classification: internal
+  - name: payment_network
+    type: STRING
+    mode: NULLABLE
+    description: Payment network
+    semantic: dimension
+    classification: internal
+  - name: card_bin
+    type: STRING
+    mode: NULLABLE
+    description: Card BIN
+    semantic: dimension
+    classification: confidential
+  - name: is_contactless
+    type: BOOLEAN
+    mode: NULLABLE
+    description: Contactless payment flag
+    semantic: flag
+    classification: internal
+  - name: currency
+    type: STRING
+    mode: NULLABLE
+    description: Currency code
+    semantic: dimension
+    classification: internal
+  - name: item_count
+    type: INTEGER
+    mode: NULLABLE
+    description: Number of unique items in transaction
+    semantic: measure
+    classification: internal
+  - name: total_quantity
+    type: INTEGER
+    mode: NULLABLE
+    description: Total quantity of all items
+    semantic: measure
+    classification: internal
+  - name: subtotal_amount
+    type: NUMERIC
+    mode: NULLABLE
+    description: Subtotal amount before tax and discount
+    semantic: measure
+    classification: confidential
+  - name: discount
+    type: NUMERIC
+    mode: NULLABLE
+    description: Total discount amount
+    semantic: measure
+    classification: confidential
+  - name: tax_amount
+    type: NUMERIC
+    mode: NULLABLE
+    description: Tax amount
+    semantic: measure
+    classification: confidential
+  - name: total
+    type: NUMERIC
+    mode: NULLABLE
+    description: Total transaction amount
+    semantic: measure
+    classification: confidential
+  - name: promo_code_applied
+    type: STRING
+    mode: NULLABLE
+    description: Promo code applied
+    semantic: dimension
+    classification: internal
+  - name: manual_discount_flag
+    type: BOOLEAN
+    mode: NULLABLE
+    description: Manual discount flag
+    semantic: flag
+    classification: internal
+  - name: items
+    type: RECORD
+    mode: REPEATED
+    description: Line items in transaction
+    semantic: nested
+    classification: internal
+    fields:
+      - name: line_seq
+        type: INTEGER
+        mode: NULLABLE
+        description: Line sequence number
+        semantic: identifier
+        classification: internal
+      - name: item_id
+        type: STRING
+        mode: NULLABLE
+        description: Item SKU / product ID
+        semantic: identifier
+        classification: internal
+      - name: item_name
+        type: STRING
+        mode: NULLABLE
+        description: Item name
+        semantic: dimension
+        classification: internal
+      - name: category
+        type: STRING
+        mode: NULLABLE
+        description: Product category
+        semantic: dimension
+        classification: internal
+      - name: quantity
+        type: INTEGER
+        mode: NULLABLE
+        description: Quantity purchased
+        semantic: measure
+        classification: internal
+      - name: unit_price
+        type: NUMERIC
+        mode: NULLABLE
+        description: Unit price
+        semantic: measure
+        classification: internal
+      - name: total
+        type: NUMERIC
+        mode: NULLABLE
+        description: Line item total
+        semantic: measure
+        classification: confidential
+      - name: discount
+        type: NUMERIC
+        mode: NULLABLE
+        description: Line item discount
+        semantic: measure
+        classification: confidential
+      - name: item_net_amount
+        type: NUMERIC
+        mode: NULLABLE
+        description: Net amount for line item
+        semantic: measure
+        classification: confidential
+service_levels:
+  freshness: >-
+    Continuous / near-real-time. Rows land via a direct Pub/Sub-to-BigQuery subscription fed by
+    the Managed Kafka POS event stream, so latency is streaming-ingest bound rather than batch
+    scheduled. No formal freshness SLO has been published; the numeric target is unknown.
+  retention: unknown
+  availability: "BigQuery regional SLA (us-central1)"
+quality:
+  rules:
+    - id: transaction_id_not_null
+      dimension: completeness
+      column: transaction_id
+      assertion: transaction_id IS NOT NULL for every row.
+      threshold: 1.0
+      enforced_by: dataplex-dq-scan
+    - id: transaction_id_unique
+      dimension: uniqueness
+      column: transaction_id
+      assertion: COUNT(DISTINCT transaction_id) = COUNT(*) — one row per completed checkout.
+      threshold: 1.0
+      enforced_by: dataplex-dq-scan
+    - id: business_date_matches_event_timestamp
+      dimension: consistency
+      column: business_date
+      assertion: >-
+        business_date is the date portion derived from event_timestamp by the SMT UDF using the
+        04:00 local business-day cutoff, and is never NULL (it is the partitioning column).
+      threshold: 1.0
+      enforced_by: dataplex-dq-scan
+    - id: total_amount_non_negative
+      dimension: validity
+      column: total
+      assertion: total >= 0 for every row (sales totals are never negative in the gold tier).
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: item_count_matches_items_array
+      dimension: consistency
+      column: item_count
+      assertion: item_count = ARRAY_LENGTH(items) — the scalar item count agrees with the repeated items record.
+      threshold: 0.99
+      enforced_by: not-enforced
+    - id: intraday_partition_present
+      dimension: timeliness
+      column: business_date
+      assertion: >-
+        At least one row exists for business_date = CURRENT_DATE() while the streaming pipeline is
+        running, so the agent's default `business_date = CURRENT_DATE()` filter returns data.
+      threshold: 1.0
+      enforced_by: eval-fixture
+governance:
+  classification: confidential
+  pii_columns: [customer_id]
+  column_level_security: >-
+    NOT enforced on this base table. The Module 1 Lab 4 column-level pattern — Cloud Resource
+    Manager tag key `pii_classification` (tagKeys/281480941817283) with values customer_name/High,
+    customer_id/Med, financial_amount/Med, store_metadata/Low, bound to RAW_DATA_ACCESS_POLICY and
+    DATA_MASKING_POLICY data policies (SHA256 hash for names, XXXXX<last4> for customer IDs, $0.00
+    for amounts) — was demonstrated on the dedicated working copy
+    `pj-elevate-da.cymbal_gold.aws_pos_transactions_gold2`, not on
+    `pj-elevate-da.cymbal_gold.pos_transactions_gold`. The columns that would be tagged here are
+    customer_id, card_bin, subtotal_amount, discount, tax_amount and total.
+  row_level_security: >-
+    NOT enforced on this base table. The Lab 4 row-access-policy pattern (unrestricted lead vs.
+    store-scoped analyst) was demonstrated on `gold_inventory_reconciliation_ledger2`. Applying it
+    here would filter on store_id for store-scoped personas.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_2.1a_warranty_transaction
+    - UC_2.3_cross-cloud_offender_audit_sequential_dispatch
+    - UC_2.2_dual_cashier_baseline_parallel_dispatch

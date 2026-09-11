@@ -1,0 +1,911 @@
+{
+  "bigquery": {
+    "pj-elevate-da.cymbal_gold.pos_transactions_gold": {
+      "table_type": "TABLE",
+      "num_rows": 64649,
+      "num_bytes": 42571495,
+      "created": "2026-09-10T02:41:34.705000+00:00",
+      "modified": "2026-09-11T02:03:09.523000+00:00",
+      "description": "Real-time streaming intraday POS sales transactions with customer PII for daily store revenue and sales KPI monitoring. (Use for today''s sales and daily revenue KPIs).",
+      "labels": {
+        "goog-terraform-provisioned": "true",
+        "dataplex-dp-published-scan": "aa3b5f3a5-88c8-4e92-a3c9-798d6f653593",
+        "dataplex-dp-published-project": "pj-elevate-da",
+        "dataplex-dp-published-location": "us-central1"
+      },
+      "schema": [
+        {
+          "name": "transaction_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Unique transaction ID"
+        },
+        {
+          "name": "event_timestamp",
+          "type": "TIMESTAMP",
+          "mode": "NULLABLE",
+          "description": "POS transaction event timestamp"
+        },
+        {
+          "name": "business_date",
+          "type": "DATE",
+          "mode": "NULLABLE",
+          "description": "Date portion of event_timestamp for partitioning"
+        },
+        {
+          "name": "store_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Store ID"
+        },
+        {
+          "name": "pos_terminal_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "POS Terminal ID"
+        },
+        {
+          "name": "cashier_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Cashier ID"
+        },
+        {
+          "name": "customer_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Customer ID"
+        },
+        {
+          "name": "customer_loyalty_tier",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Customer loyalty tier"
+        },
+        {
+          "name": "payment_method",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Payment method"
+        },
+        {
+          "name": "payment_network",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Payment network"
+        },
+        {
+          "name": "card_bin",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Card BIN"
+        },
+        {
+          "name": "is_contactless",
+          "type": "BOOLEAN",
+          "mode": "NULLABLE",
+          "description": "Contactless payment flag"
+        },
+        {
+          "name": "currency",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Currency code"
+        },
+        {
+          "name": "item_count",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": "Number of unique items in transaction"
+        },
+        {
+          "name": "total_quantity",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": "Total quantity of all items"
+        },
+        {
+          "name": "subtotal_amount",
+          "type": "NUMERIC",
+          "mode": "NULLABLE",
+          "description": "Subtotal amount before tax and discount"
+        },
+        {
+          "name": "discount",
+          "type": "NUMERIC",
+          "mode": "NULLABLE",
+          "description": "Total discount amount"
+        },
+        {
+          "name": "tax_amount",
+          "type": "NUMERIC",
+          "mode": "NULLABLE",
+          "description": "Tax amount"
+        },
+        {
+          "name": "total",
+          "type": "NUMERIC",
+          "mode": "NULLABLE",
+          "description": "Total transaction amount"
+        },
+        {
+          "name": "promo_code_applied",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Promo code applied"
+        },
+        {
+          "name": "manual_discount_flag",
+          "type": "BOOLEAN",
+          "mode": "NULLABLE",
+          "description": "Manual discount flag"
+        },
+        {
+          "name": "items",
+          "type": "RECORD",
+          "mode": "REPEATED",
+          "description": "Line items in transaction",
+          "fields": [
+            {
+              "name": "line_seq",
+              "type": "INTEGER",
+              "mode": "NULLABLE",
+              "description": "Line sequence number"
+            },
+            {
+              "name": "item_id",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": "Item SKU / product ID"
+            },
+            {
+              "name": "item_name",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": "Item name"
+            },
+            {
+              "name": "category",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": "Product category"
+            },
+            {
+              "name": "quantity",
+              "type": "INTEGER",
+              "mode": "NULLABLE",
+              "description": "Quantity purchased"
+            },
+            {
+              "name": "unit_price",
+              "type": "NUMERIC",
+              "mode": "NULLABLE",
+              "description": "Unit price"
+            },
+            {
+              "name": "total",
+              "type": "NUMERIC",
+              "mode": "NULLABLE",
+              "description": "Line item total"
+            },
+            {
+              "name": "discount",
+              "type": "NUMERIC",
+              "mode": "NULLABLE",
+              "description": "Line item discount"
+            },
+            {
+              "name": "item_net_amount",
+              "type": "NUMERIC",
+              "mode": "NULLABLE",
+              "description": "Net amount for line item"
+            }
+          ]
+        }
+      ],
+      "time_partitioning": {
+        "type": "DAY",
+        "field": "business_date"
+      }
+    },
+    "pj-elevate-da.cymbal_gold.pos_anomaly_alerts": {
+      "table_type": "TABLE",
+      "num_rows": 5912,
+      "num_bytes": 806565,
+      "created": "2026-09-10T03:03:13.842000+00:00",
+      "modified": "2026-09-11T02:06:50.427000+00:00",
+      "description": "Historical multi-day cashier anomaly and promo abuse alert ledger (partitioned by alert_ts). Primary table for multi-day trend analysis, 7-day/30-day top offender rankings, and historical override rate calculations. (NOTE: For real-time 1-hour live audit status and streaming flags, query Cloud Bigtable operational cache).",
+      "labels": {
+        "goog-terraform-provisioned": "true",
+        "dataplex-dp-published-scan": "a42f0b63e-70ff-43c3-8e36-fed4ef673f05",
+        "dataplex-dp-published-project": "pj-elevate-da",
+        "dataplex-dp-published-location": "us-central1"
+      },
+      "schema": [
+        {
+          "name": "alert_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Unique alert identifier with prefix ALT-ANOMALY- or ALT-ABUSE-"
+        },
+        {
+          "name": "store_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Store ID from POS transaction"
+        },
+        {
+          "name": "alert_type",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Type of alert: order_anomaly or cashier_promo_abuse"
+        },
+        {
+          "name": "alert_source",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Originating model: order_anomaly_model or cashier_abuse_model"
+        },
+        {
+          "name": "transaction_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "POS transaction identifier"
+        },
+        {
+          "name": "cashier_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": "Cashier identifier"
+        },
+        {
+          "name": "discount_pct",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": "Calculated discount percentage (discount / subtotal_amount)"
+        },
+        {
+          "name": "risk_score",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": "Inference risk score / probability for positive anomaly class"
+        },
+        {
+          "name": "alert_ts",
+          "type": "TIMESTAMP",
+          "mode": "NULLABLE",
+          "description": "Event timestamp of the transaction that triggered the alert"
+        }
+      ],
+      "time_partitioning": {
+        "type": "DAY",
+        "field": "alert_ts"
+      },
+      "clustering_fields": [
+        "store_id",
+        "alert_type"
+      ]
+    },
+    "pj-elevate-da.cymbal_gold.gold_inventory_reconciliation_ledger": {
+      "table_type": "TABLE",
+      "num_rows": 8400,
+      "num_bytes": 0,
+      "created": "2026-09-08T04:48:36.249000+00:00",
+      "modified": "2026-09-10T22:02:41.196000+00:00",
+      "description": "Daily reconciled store inventory ledger tracking opening balance, shelf/backroom quantities, intraday revenue, and remaining cover hours for stockout risk analysis.",
+      "labels": {
+        "goog-terraform-provisioned": "true",
+        "dataplex-dp-published-scan": "a22da5b88-9611-466c-9c95-29fae7e8e89a",
+        "dataplex-dp-published-project": "pj-elevate-da",
+        "datacloud": "antigravity",
+        "dataplex-dp-published-location": "us-central1"
+      },
+      "schema": [
+        {
+          "name": "business_date",
+          "type": "DATE",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "city",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "item_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "unit_price_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "opening_qty",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "shelf_qty",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "backroom_qty",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "intraday_gross_revenue_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "est_cover_hours_remaining",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "reconciliation_status",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        }
+      ],
+      "clustering_fields": [
+        "reconciliation_status",
+        "store_id"
+      ]
+    },
+    "pj-elevate-da.cymbal_gold.historical_transactional_data": {
+      "table_type": "TABLE",
+      "num_rows": 22390,
+      "num_bytes": 12429611,
+      "created": "2026-09-08T04:48:02.820000+00:00",
+      "modified": "2026-09-10T06:27:18.676000+00:00",
+      "description": "Historical customer item purchase transactions used strictly for product warranty claims triage and returns eligibility. (Use for customer purchase verification in warranty workflows).",
+      "labels": {
+        "dataplex-dp-published-scan": "afa087d51-e8d8-4d9c-84b7-072d08197d68",
+        "dataplex-dp-published-project": "pj-elevate-da",
+        "dataplex-dp-published-location": "us-central1"
+      },
+      "schema": [
+        {
+          "name": "transaction_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "event_timestamp",
+          "type": "TIMESTAMP",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "global_region",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "pos_terminal_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "cashier_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_loyalty_tier",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "payment_method",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "payment_network",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "card_bin",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "card_number",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "is_contactless",
+          "type": "BOOLEAN",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "currency",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "item_count",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_item_quantity",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "subtotal_amount",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "subtotal_amount_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "discount_amount",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "tax_amount",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_amount",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_amount_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "promo_code_applied",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "manual_discount_flag",
+          "type": "BOOLEAN",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "items",
+          "type": "RECORD",
+          "mode": "REPEATED",
+          "description": null,
+          "fields": [
+            {
+              "name": "line_seq",
+              "type": "INTEGER",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "item_id",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "item_name",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "category",
+              "type": "STRING",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "quantity",
+              "type": "INTEGER",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "unit_price",
+              "type": "FLOAT",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "total",
+              "type": "FLOAT",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "discount",
+              "type": "FLOAT",
+              "mode": "NULLABLE",
+              "description": null
+            },
+            {
+              "name": "item_net_amount",
+              "type": "FLOAT",
+              "mode": "NULLABLE",
+              "description": null
+            }
+          ]
+        },
+        {
+          "name": "_ingested_at",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "_source_file",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "_batch_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "_msk_message_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "business_date",
+          "type": "DATE",
+          "mode": "NULLABLE",
+          "description": null
+        }
+      ],
+      "time_partitioning": {
+        "type": "DAY",
+        "field": "business_date"
+      },
+      "clustering_fields": [
+        "transaction_id",
+        "store_id",
+        "customer_id"
+      ]
+    },
+    "pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted": {
+      "table_type": "TABLE",
+      "num_rows": 26,
+      "num_bytes": 219093,
+      "created": "2026-09-09T05:58:54.509000+00:00",
+      "modified": "2026-09-10T06:27:20.038000+00:00",
+      "description": "Extracted product warranty policy terms, coverage duration in months, service levels, exclusions, and official support URLs for warranty claim evaluation.",
+      "labels": {},
+      "schema": [
+        {
+          "name": "product_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "product_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "brand",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "category",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "retail_price_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "warranty_duration_months",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "warranty_start",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "coverage_type",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "service_level",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "service_region",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "coverage_scope_details",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "exclusions_and_limitations",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "official_retailer_guarantee_and_sla",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "support_and_claims_process",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "support_url",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "support_email",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "extracted_full_content",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "source_pdf_uri",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        }
+      ]
+    },
+    "pj-elevate-da.cymbal-lakehouse.elevate_data.silver_pos_transactions": {
+      "table_type": "TABLE",
+      "num_rows": null,
+      "num_bytes": null,
+      "created": "2026-09-08T05:59:05.156000+00:00",
+      "modified": "2026-09-08T05:59:05.788000+00:00",
+      "description": null,
+      "labels": {},
+      "schema": [
+        {
+          "name": "transaction_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "event_timestamp",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "store_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "global_region",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "pos_terminal_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "cashier_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_id",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_name",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "customer_loyalty_tier",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "payment_method",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_item_quantity",
+          "type": "INTEGER",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_amount",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "total_amount_usd",
+          "type": "FLOAT",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "currency",
+          "type": "STRING",
+          "mode": "NULLABLE",
+          "description": null
+        },
+        {
+          "name": "contains_harmful_batch",
+          "type": "BOOLEAN",
+          "mode": "NULLABLE",
+          "description": null
+        }
+      ]
+    }
+  },
+  "bigtable": {
+    "operations-db:cashier_realtime_alerts": {
+      "instance_id": "operations-db",
+      "table_id": "cashier_realtime_alerts",
+      "column_families": {
+        "stats": {
+          "gc_rule": null
+        },
+        "flags": {
+          "gc_rule": null
+        }
+      },
+      "sample_row_key": "STORE_001#CASH_1001#9221582945220097807",
+      "sample_qualifiers": {
+        "flags": [
+          "audit_status"
+        ],
+        "stats": [
+          "cashier_1h_avg_discount_pct",
+          "cashier_1h_manual_override_count",
+          "cashier_1h_promo_count",
+          "cashier_1h_promo_rate",
+          "cashier_1h_total_discount_usd",
+          "cashier_1h_txn_count",
+          "last_event_ts",
+          "risk_score"
+        ]
+      }
+    }
+  }
+}

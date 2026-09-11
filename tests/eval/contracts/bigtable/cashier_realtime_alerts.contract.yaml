@@ -1,0 +1,226 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: operations-db.cashier_realtime_alerts
+  display_name: Real-Time Cashier Risk Metrics & Audit Flags (Cloud Bigtable Serving Layer)
+  version: 1.0.0
+  status: active
+  layer: serving
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [bigtable, realtime, serving, cashier, fraud, streaming, dataflow, mcp-toolbox]
+provider:
+  platform: bigtable
+  project: pj-elevate-da
+  instance: operations-db
+  table: cashier_realtime_alerts
+  fully_qualified_name: operations-db:cashier_realtime_alerts
+  region: us-central1
+  table_type: bigtable-table
+  physical:
+    column_families:
+      - name: stats
+        gc_rule: none configured (null in snapshot)
+      - name: flags
+        gc_rule: none configured (null in snapshot)
+    row_key:
+      pattern: "STORE_<3-digit store number>#CASH_<cashier number>#<reversed timestamp>"
+      observed_sample: "STORE_001#CASH_1001#9221582945220097807"
+      separator: "#"
+      components:
+        - name: store_id
+          format: >-
+            `STORE_` followed by the store number zero-padded to 3 digits. The agent tool builds
+            this by stripping all non-digits from the caller's input and formatting with
+            `f"STORE_{int(store_num):03d}"`, so 'Store 48', '48' and 'STORE_048' all normalize to
+            `STORE_048`.
+        - name: cashier_id
+          format: >-
+            `CASH_` followed by the cashier number with NO zero padding, built as
+            `f"CASH_{cashier_num}"` from the digits of the caller's input, so 'CASH_1190' and
+            '1190' both normalize to `CASH_1190`.
+        - name: reversed_timestamp
+          format: >-
+            Reversed (descending) timestamp suffix. The reader in bigtable_tool.py documents this
+            component as a reversed timestamp and relies on it to make the FIRST row returned for
+            a prefix the MOST RECENT event. The observed sample value 9221582945220097807 equals
+            int64 max (9223372036854775807) minus 1789091634678000, i.e. minus an epoch timestamp
+            in microseconds, which is consistent with the standard Bigtable reversed-timestamp
+            idiom; the exact unit was inferred from that single sample and is not confirmed by
+            the writer code, so treat the precise encoding as unknown.
+    row_key_prefix_for_lookup: >-
+      Point lookups are performed as a prefix scan on `STORE_XXX#CASH_YYYY` (the first two
+      components only), returning up to 5 rows ordered by the reversed timestamp so that the
+      newest event sorts first.
+    observed_at: "2026-09-11T02:07:00Z"
+description: |
+  Low-latency Cloud Bigtable serving table holding 1-hour rolling cashier behaviour metrics and
+  operational audit flags for every active cashier position. It is the activation sink of the
+  Module 2 Apache Beam streaming pipeline, which reads the Silver POS CDC stream, computes
+  1-hour sliding windows updated every 10 seconds, calls the remote `cashier_abuse_model` ML
+  endpoint and writes the resulting risk statistics directly to Bigtable. Rows are keyed by
+  store, cashier and a reversed timestamp so that the newest event for a cashier is the first
+  row of a prefix scan. The `stats` family carries the rolling counters, rates and the real-time
+  fraud risk score; the `flags` family carries the operational audit disposition ('clear' vs
+  'review'). The ADK coordinator agent reads it for live cashier telemetry in UC 1.3 and for the
+  dual-cashier parallel dispatch baseline in UC 2.2.
+lineage:
+  produced_by: Apache Beam streaming pipeline on Cloud Dataflow (module_2 cashier_abuse_pipeline.py) with inline remote ML inference against the cashier_abuse_model endpoint
+  upstream:
+    - pj-elevate-da.cymbal_silver.pos_transactions_silver (BigQuery Silver CDC change stream of conformed POS checkout events)
+    - Vertex AI remote ML endpoint `cashier_abuse_model` (source of risk_score and the derived audit disposition)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+    - cymbal_operations_agent (ADK coordinator, bigtable_mcp_toolset and read_cashier_realtime_metrics tool)
+column_families:
+  - name: stats
+    qualifiers:
+      - name: cashier_1h_avg_discount_pct
+        value_encoding: unknown (this qualifier is not decoded by bigtable_tool.py, so its byte encoding cannot be confirmed from the reader code)
+        semantic: measure
+        classification: internal
+        description: Average discount percentage applied by the cashier over the trailing 1-hour window.
+      - name: cashier_1h_manual_override_count
+        value_encoding: big-endian signed 64-bit integer (decoded with struct.unpack(">q", value))
+        semantic: measure
+        classification: internal
+        description: Number of manual price or promotion overrides performed by the cashier in the trailing 1-hour window.
+      - name: cashier_1h_promo_count
+        value_encoding: unknown (this qualifier is not decoded by bigtable_tool.py, so its byte encoding cannot be confirmed from the reader code)
+        semantic: measure
+        classification: internal
+        description: Number of promotional discounts applied by the cashier in the trailing 1-hour window.
+      - name: cashier_1h_promo_rate
+        value_encoding: big-endian IEEE-754 64-bit float (decoded with struct.unpack(">d", value))
+        semantic: measure
+        classification: internal
+        description: Fraction of the cashier's trailing 1-hour transactions that carried a promotional discount; rendered as a percentage by the agent tool.
+      - name: cashier_1h_total_discount_usd
+        value_encoding: unknown (this qualifier is not decoded by bigtable_tool.py, so its byte encoding cannot be confirmed from the reader code)
+        semantic: measure
+        classification: internal
+        description: Total discount value in USD granted by the cashier over the trailing 1-hour window.
+      - name: cashier_1h_txn_count
+        value_encoding: big-endian signed 64-bit integer (decoded with struct.unpack(">q", value))
+        semantic: measure
+        classification: internal
+        description: Total number of checkouts completed by the cashier in the trailing 1-hour window.
+      - name: last_event_ts
+        value_encoding: raw UTF-8 string (decoded with value.decode("utf-8"))
+        semantic: timestamp
+        classification: internal
+        description: Timestamp of the most recent checkout event recorded for this cashier, stored as a UTF-8 string.
+      - name: risk_score
+        value_encoding: big-endian IEEE-754 64-bit float (decoded with struct.unpack(">d", value))
+        semantic: measure
+        classification: internal
+        description: Real-time ML fraud risk score for the cashier position, ranging from 0.0 to 1.0.
+  - name: flags
+    qualifiers:
+      - name: audit_status
+        value_encoding: raw UTF-8 string (decoded with value.decode("utf-8"))
+        semantic: flag
+        classification: internal
+        description: Operational audit disposition for the cashier position; the agent tool treats 'review' as requiring critical review and any other value as clear.
+access:
+  primary_path: >-
+    Read through the `mcp-toolbox-bigtable` Cloud Run MCP Toolbox microservice
+    (https://mcp-toolbox-bigtable-15183141503.us-central1.run.app) over the `/mcp/sse` Server-Sent
+    Events endpoint, wired into the ADK agent as an McpToolset with a 90 second timeout. The
+    service is private: the client mints a Google Cloud OIDC ID token (via impersonation of
+    cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com, audience = the Cloud Run service URL)
+    and sends it as an `Authorization: Bearer` header. Tool definitions are mounted into the
+    service from Secret Manager (`bigtable-mcp-tools-secret`).
+  fallback_path: >-
+    Direct Cloud Bigtable SDK read via the `read_cashier_realtime_metrics` tool, which opens a
+    google.cloud.bigtable client with admin=False, builds a RowSet prefix range on
+    `STORE_XXX#CASH_YYYY` and reads at most 5 rows, taking the first (most recent) row. Errors are
+    caught and returned as text rather than raised, so a failed read degrades to a message instead
+    of breaking the agent turn.
+  access_mode: read-only for both paths; no agent path writes to this table.
+  configuration: >-
+    Endpoint, project, instance and table are overridable via the BIGTABLE_MCP_URL, PROJECT_ID,
+    BIGTABLE_INSTANCE and BIGTABLE_TABLE environment variables.
+service_levels:
+  freshness: >-
+    Near real-time. The upstream Beam pipeline computes 1-hour sliding windows that advance every
+    10 seconds, so rows are expected to be at most tens of seconds behind the originating checkout
+    event. Absence of rows for a prefix is a valid state and is reported by the agent as the
+    cashier being offline or having no checkouts in the last hour.
+  retention: unknown (no garbage collection rule is configured on either column family in the observed snapshot)
+  availability: >-
+    Cloud Bigtable SLA for the operations-db instance. The primary agent read path additionally
+    depends on the Cloud Run availability of the `mcp-toolbox-bigtable` microservice and on
+    Secret Manager and IAM token minting; the direct Bigtable SDK fallback removes the Cloud Run
+    dependency.
+quality:
+  rules:
+    - id: row_key_format_valid
+      dimension: validity
+      column: '*'
+      assertion: Every row key matches the pattern ^STORE_[0-9]{3}#CASH_[0-9]+#[0-9]+$
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: risk_score_in_unit_range
+      dimension: validity
+      column: stats:risk_score
+      assertion: 0.0 <= risk_score <= 1.0 after big-endian float64 decoding
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: audit_status_allowed_values
+      dimension: validity
+      column: flags:audit_status
+      assertion: audit_status decodes to one of the known dispositions 'clear' or 'review'
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: counters_non_negative
+      dimension: validity
+      column: stats:cashier_1h_txn_count, stats:cashier_1h_manual_override_count
+      assertion: Both counters decode to integers >= 0
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: promo_rate_in_unit_range
+      dimension: validity
+      column: stats:cashier_1h_promo_rate
+      assertion: 0.0 <= cashier_1h_promo_rate <= 1.0 (stored as a fraction, rendered as a percentage)
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: core_qualifiers_present
+      dimension: completeness
+      column: stats:risk_score, stats:cashier_1h_txn_count, flags:audit_status
+      assertion: Every returned row carries the qualifiers the agent renders, so no metric silently defaults to the tool's 0.0 / 0 / 'unknown' placeholder
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: newest_row_first_on_prefix_scan
+      dimension: timeliness
+      column: '*'
+      assertion: A prefix scan on STORE_XXX#CASH_YYYY returns the most recent event as the first row, which requires the reversed-timestamp suffix to be written consistently
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: override_count_not_exceeding_txn_count
+      dimension: consistency
+      column: stats:cashier_1h_manual_override_count
+      assertion: cashier_1h_manual_override_count <= cashier_1h_txn_count within the same row
+      threshold: 1.0
+      enforced_by: not-enforced
+governance:
+  classification: internal
+  pii_columns: []
+  column_level_security: >-
+    Bigtable does not support BigQuery-style column-level policy tags, and none of the observed
+    qualifiers contain customer PII: the table is keyed and scoped to store and cashier operational
+    identifiers only. Qualifier-level exposure is instead constrained by the fixed set of columns
+    the MCP Toolbox tool definitions and the read_cashier_realtime_metrics tool project.
+  row_level_security: >-
+    No native row-level security exists in Bigtable. Row scoping is enforced at the application
+    layer: both access paths only ever issue a prefix scan for one specific
+    STORE_XXX#CASH_YYYY combination supplied by the caller, and the direct SDK read is limited to
+    5 rows. Broader access is governed by IAM on the operations-db instance and by the OIDC-gated
+    Cloud Run microservice. Note that the low-priority `bq-export` app profile also reads this
+    instance for the Continuous Queries reverse-ETL path.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_1.3_real-time_cashier_metrics
+    - UC_2.2_dual_cashier_baseline_parallel_dispatch

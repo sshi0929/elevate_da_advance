@@ -1,0 +1,240 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: module1_unstructureddata.warranty_generic_sections_extracted
+  display_name: Warranty Policy Terms Extracted from OEM Warranty PDFs
+  version: 1.0.0
+  status: active
+  layer: silver
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [warranty, unstructured, multimodal, ai-generate-table, dark-data, bqca]
+provider:
+  platform: bigquery
+  project: pj-elevate-da
+  dataset: module1_unstructureddata
+  table: warranty_generic_sections_extracted
+  fully_qualified_name: pj-elevate-da.module1_unstructureddata.warranty_generic_sections_extracted
+  region: us-central1
+  table_type: TABLE
+  physical:
+    partitioning: none
+    clustering: none
+    observed_row_count: 26
+    observed_at: "2026-09-11T02:07:00Z"
+description: |
+  Extracted product warranty policy terms, coverage duration in months, service levels,
+  exclusions, and official support URLs for warranty claim evaluation, as stated in the deployed
+  BigQuery table description. Each row corresponds to one warranty certificate PDF that was
+  exposed through the `warranty_generic_pdfs_objects` object table and structured with
+  `AI.GENERATE_TABLE` in Module 1 / Lab 2b, so the table converts previously unqueryable dark
+  data into typed, joinable policy attributes. The Cymbal Retail Analytics Data Agent queries it
+  for warranty durations, service levels, coverage scopes and exclusions, and joins it to
+  purchase facts on `item.item_id = warr.product_id` during UC 2.1 warranty triage. The verbatim
+  source text is retained in `extracted_full_content` alongside the pointer in `source_pdf_uri`
+  so every generated answer can be traced back to the originating certificate.
+lineage:
+  produced_by: BigQuery AI.GENERATE_TABLE batch extraction over the `warranty_generic_pdfs_objects` object table (Module 1 / Lab 2b, scripted in module_1/lab_spark/02_multimodal_rag_pipelines.sql)
+  upstream:
+    - pj-elevate-da.module1_unstructureddata.warranty_generic_pdfs_objects (object table over 26 warranty certificate PDFs in Cloud Storage)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+schema:
+  - name: product_id
+    type: STRING
+    mode: NULLABLE
+    description: Product identifier the warranty certificate applies to; join key to historical_transactional_data items.item_id.
+    description_source: authored
+    semantic: identifier
+    classification: internal
+  - name: product_name
+    type: STRING
+    mode: NULLABLE
+    description: Commercial product name as printed on the warranty certificate.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: brand
+    type: STRING
+    mode: NULLABLE
+    description: Manufacturer or brand issuing the warranty.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: category
+    type: STRING
+    mode: NULLABLE
+    description: Retail product category of the covered product.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: retail_price_usd
+    type: FLOAT
+    mode: NULLABLE
+    description: Retail price of the covered product in USD.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: warranty_duration_months
+    type: INTEGER
+    mode: NULLABLE
+    description: Duration of active manufacturer warranty coverage in months; compared against elapsed months since purchase to decide whether a claim is still covered.
+    description_source: authored
+    semantic: measure
+    classification: internal
+  - name: warranty_start
+    type: STRING
+    mode: NULLABLE
+    description: Warranty start condition or date as extracted from the certificate, retained as free text.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: coverage_type
+    type: STRING
+    mode: NULLABLE
+    description: Type of coverage provided, for example limited manufacturer warranty or accidental damage coverage.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: service_level
+    type: STRING
+    mode: NULLABLE
+    description: Service level offered under the warranty, for example repair, replacement or carry-in service.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: service_region
+    type: STRING
+    mode: NULLABLE
+    description: Geographic region in which the warranty service is honoured.
+    description_source: authored
+    semantic: dimension
+    classification: internal
+  - name: coverage_scope_details
+    type: STRING
+    mode: NULLABLE
+    description: Narrative description of what the warranty covers, extracted from the certificate.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: exclusions_and_limitations
+    type: STRING
+    mode: NULLABLE
+    description: Narrative description of the exclusions and limitations that void or restrict coverage.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: official_retailer_guarantee_and_sla
+    type: STRING
+    mode: NULLABLE
+    description: Retailer-side guarantee and service level agreement terms stated on the certificate.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: support_and_claims_process
+    type: STRING
+    mode: NULLABLE
+    description: Steps a customer must follow to raise and progress a warranty claim.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: support_url
+    type: STRING
+    mode: NULLABLE
+    description: Official manufacturer or retailer support URL for warranty claims.
+    description_source: authored
+    semantic: free_text
+    classification: public
+  - name: support_email
+    type: STRING
+    mode: NULLABLE
+    description: Official support contact email address for warranty claims.
+    description_source: authored
+    semantic: free_text
+    classification: public
+  - name: extracted_full_content
+    type: STRING
+    mode: NULLABLE
+    description: Verbatim full text extracted from the source warranty PDF, retained for grounding and citation.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+  - name: source_pdf_uri
+    type: STRING
+    mode: NULLABLE
+    description: Cloud Storage URI of the originating warranty certificate PDF.
+    description_source: authored
+    semantic: free_text
+    classification: internal
+service_levels:
+  freshness: >-
+    Batch, event-driven rather than scheduled: the table is rematerialized by re-running the
+    AI.GENERATE_TABLE extraction when the underlying warranty PDF corpus changes. No recurring
+    refresh cadence is configured, so freshness follows the source PDF corpus.
+  retention: unknown
+  availability: BigQuery regional SLA for the us-central1 multi-tenant service (Google Cloud BigQuery SLA).
+quality:
+  rules:
+    - id: product_id_not_null
+      dimension: completeness
+      column: product_id
+      assertion: COUNT(*) WHERE product_id IS NULL = 0
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: product_id_unique
+      dimension: uniqueness
+      column: product_id
+      assertion: COUNT(DISTINCT product_id) = COUNT(product_id), i.e. one warranty policy row per product
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: product_name_not_null
+      dimension: completeness
+      column: product_name
+      assertion: COUNT(*) WHERE product_name IS NULL OR product_name = '' = 0
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: retail_price_present_and_positive
+      dimension: validity
+      column: retail_price_usd
+      assertion: retail_price_usd IS NOT NULL AND retail_price_usd > 0
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: warranty_duration_present_and_positive
+      dimension: validity
+      column: warranty_duration_months
+      assertion: warranty_duration_months IS NOT NULL AND warranty_duration_months > 0
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: extracted_content_minimum_length
+      dimension: completeness
+      column: extracted_full_content
+      assertion: LENGTH(extracted_full_content) >= 800 characters for every row (Lab 2b quality gate; observed minimum 2764, observed average 5838)
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: source_pdf_uri_resolvable
+      dimension: consistency
+      column: source_pdf_uri
+      assertion: Every source_pdf_uri points at an object present in the warranty_generic_pdfs_objects object table
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: row_count_matches_pdf_corpus
+      dimension: completeness
+      column: '*'
+      assertion: Extracted row count equals the number of warranty certificate PDFs in the object table (26 observed)
+      threshold: 1.0
+      enforced_by: eval-fixture
+governance:
+  classification: internal
+  pii_columns: []
+  column_level_security: >-
+    No BigQuery policy tags or data governance tags are attached to this table in the observed
+    snapshot. The content is product warranty policy text rather than customer data, so access is
+    controlled by dataset-level IAM on `module1_unstructureddata` only.
+  row_level_security: >-
+    No row access policies are defined on this table in the observed snapshot; all principals with
+    dataset read access see all 26 rows.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_2.1a_warranty_transaction

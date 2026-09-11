@@ -1,0 +1,55 @@
+[project]
+name = "elevate-da-advance"
+version = "1.0.0"
+description = "Project Elevate — Data Analytics Advanced Track. Cymbal Retail Modern Lakehouse & Agentic AI platform, with the ADK operations coordinator agent and its evaluation harness."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Cymbal Data Platform Engineering" }]
+
+# Runtime dependencies for the ADK coordinator agent (module_3/app).
+# Kept in sync with module_3/requirements.txt.
+dependencies = [
+    "google-adk>=2.8.0",
+    "mcp>=1.30.0,<2.0.0",
+    "google-genai>=2.22.0",
+    "google-cloud-bigquery>=3.45.0",
+    "google-cloud-bigtable>=2.44.0",
+    "google-auth>=2.49.0",
+]
+
+[project.optional-dependencies]
+# Required by `adk eval` and by tests/eval/run_eval_suite.py.
+#
+# NOTE: do NOT install via `google-adk[eval]` in the corp environment — the
+# transitive `gepa>=0.1` dependency 401s against the internal index. Install
+# these leaf packages directly instead.
+eval = [
+    "pandas",
+    "tabulate",
+    "nltk",
+    "rouge-score",
+    "jinja2",
+    "openpyxl",
+    "google-cloud-aiplatform",
+    "pyyaml",
+]
+
+[project.urls]
+Repository = "https://github.com/sshi0929/elevate_da_advance"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["module_3/app"]
+
+[tool.uv]
+# The agent runtime lives in module_3/.venv, which is provisioned from
+# module_3/requirements.txt. Declaring the project here is for tooling and
+# dependency discovery; it is not intended to manage that venv.
+managed = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]

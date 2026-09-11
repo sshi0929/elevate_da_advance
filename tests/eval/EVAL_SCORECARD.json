@@ -1,0 +1,100 @@
+[
+  {
+    "tier": "livedata",
+    "eval_id": "UC_1.3_real-time_cashier_metrics",
+    "status": "PASSED",
+    "metrics": {
+      "hallucinations_v1": 1.0,
+      "rubric_based_tool_use_quality_v1": 1.0
+    },
+    "thresholds": {
+      "hallucinations_v1": 0.6,
+      "rubric_based_tool_use_quality_v1": 0.7
+    },
+    "error": null
+  },
+  {
+    "tier": "livedata",
+    "eval_id": "UC_2.2_dual_cashier_baseline_parallel_dispatch",
+    "status": "PASSED",
+    "metrics": {
+      "hallucinations_v1": 1.0,
+      "rubric_based_tool_use_quality_v1": 0.75
+    },
+    "thresholds": {
+      "hallucinations_v1": 0.6,
+      "rubric_based_tool_use_quality_v1": 0.7
+    },
+    "error": null
+  },
+  {
+    "tier": "reference",
+    "eval_id": "UC_1.1a_hardware_error",
+    "status": "FAILED",
+    "metrics": {
+      "final_response_match_v2": 1.0,
+      "hallucinations_v1": 0.41935483870967744
+    },
+    "thresholds": {
+      "final_response_match_v2": 0.7,
+      "hallucinations_v1": 0.6
+    },
+    "error": null
+  },
+  {
+    "tier": "reference",
+    "eval_id": "UC_1.1c_out-of-scope_hardware",
+    "status": "PASSED",
+    "metrics": {
+      "final_response_match_v2": 1.0,
+      "hallucinations_v1": 1.0
+    },
+    "thresholds": {
+      "final_response_match_v2": 0.7,
+      "hallucinations_v1": 0.6
+    },
+    "error": null
+  },
+  {
+    "tier": "reference",
+    "eval_id": "UC_1.2a_stockout_risk_lt_20h",
+    "status": "PASSED",
+    "metrics": {
+      "final_response_match_v2": 1.0,
+      "hallucinations_v1": 0.8181818181818182
+    },
+    "thresholds": {
+      "final_response_match_v2": 0.7,
+      "hallucinations_v1": 0.6
+    },
+    "error": null
+  },
+  {
+    "tier": "reference",
+    "eval_id": "UC_2.3_cross-cloud_offender_audit_sequential_dispatch",
+    "status": "PASSED",
+    "metrics": {
+      "final_response_match_v2": 1.0,
+      "hallucinations_v1": 0.9166666666666666
+    },
+    "thresholds": {
+      "final_response_match_v2": 0.7,
+      "hallucinations_v1": 0.6
+    },
+    "error": null
+  },
+  {
+    "tier": "reference",
+    "eval_id": "UC_2.1a_warranty_transaction",
+    "status": "PASSED",
+    "metrics": {
+      "final_response_match_v2": 1.0,
+      "hallucinations_v1": 1.0
+    },
+    "thresholds": {
+      "final_response_match_v2": 0.7,
+      "hallucinations_v1": 0.6
+    },
+    "error": null
+  }
+]

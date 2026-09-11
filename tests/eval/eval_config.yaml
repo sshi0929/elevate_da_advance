@@ -1,0 +1,251 @@
+# =============================================================================
+# Cymbal Retail Unified Operations & Risk Coordinator Agent
+# Evaluation Configuration — SINGLE SOURCE OF TRUTH
+# =============================================================================
+# This file is authoritative. The ADK-native JSON configs consumed at runtime
+# (module_3/app/eval_config_reference.json, eval_config_livedata.json,
+# test_config.json) are GENERATED from this file by:
+#
+#     uv run python tests/eval/scripts/sync_adk_assets.py
+#
+# CI and the runner both call that script with `--check` first, so the JSON can
+# never silently drift from this YAML. Do not hand-edit the generated JSON.
+# =============================================================================
+
+apiVersion: cymbal.evalconfig/v1
+kind: EvaluationConfig
+
+metadata:
+  name: cymbal-operations-agent-benchmark
+  eval_set_id: cymbal_ops_benchmark
+  version: 1.0.0
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  description: >-
+    Golden benchmark for the 3-toolset ADK coordinator agent. Covers
+    single-tool dispatch, parallel dispatch, sequential multi-turn dispatch,
+    cross-cloud federation, and out-of-scope refusal.
+
+# -----------------------------------------------------------------------------
+# System under test
+# -----------------------------------------------------------------------------
+target:
+  agent_dir: module_3/app
+  agent_module: app.agent
+  root_agent: cymbal_operations_agent
+  model: gemini-3.8-flash            # overridable via $COORDINATOR_MODEL
+  model_note: >-
+    Upgraded from gemini-3.6-flash on 2026-09-11. NOTE: the coordinator and the
+    judge (below) now run the same model. This is acceptable for
+    hallucinations_v1 and rubric_based_tool_use_quality_v1, which grade against
+    the recorded tool outputs rather than against the judge's own opinion, but
+    it does introduce a self-preference risk on final_response_match_v2. Track
+    it; if reference-tier scores rise without a corresponding qualitative
+    improvement, re-grade with a different judge family to confirm.
+
+  toolsets:
+    - name: cymbal_analytics_tool
+      kind: nl2sql
+      backend: BigQuery Conversational Analytics Data Agent (global endpoint)
+    - name: pos_troubleshooting_rag_tool
+      kind: vector-search
+      backend: BigQuery VECTOR_SEARCH over pos_manual_chunk_embeddings
+    - name: bigtable_mcp_toolset
+      kind: mcp
+      backend: mcp-toolbox-bigtable on Cloud Run (SSE + OIDC ID token)
+    - name: read_cashier_realtime_metrics
+      kind: python-function
+      backend: Cloud Bigtable SDK (direct fallback path)
+
+# -----------------------------------------------------------------------------
+# Judge model
+# -----------------------------------------------------------------------------
+judge:
+  model: gemini-3.8-flash
+  num_samples: 5                     # ADK default; majority-vote aggregation
+  rationale: >-
+    ADK hardcodes judge_model="gemini-2.5-flash"
+    (google/adk/evaluation/eval_metrics.py:85). The 2.5 series is obsolete as of
+    1H2026, so every metric below pins the judge explicitly. Gemini 3.8 Flash is
+    the newest GA Flash model and the strongest available for agentic judging at
+    low cost. This override is the ONLY reason the JSON configs use full
+    criterion objects instead of bare float thresholds.
+
+# -----------------------------------------------------------------------------
+# Execution controls
+# -----------------------------------------------------------------------------
+execution:
+  inference_parallelism: 1
+  evaluation_parallelism: 1
+  session_service: in_memory
+  rationale: >-
+    ADK defaults InferenceConfig.parallelism to 4. The agent holds a single MCP
+    SSE session to Cloud Run; concurrent eval runners collide on it and ADK
+    silently drops the entire toolset ("Agent cymbal_operations_agent will run
+    without the tools from toolset McpToolset"), which turns tool-dependent
+    cases into false negatives. Concurrency additionally produced
+    sqlite3.OperationalError "database is locked" against app/.adk/session.db.
+    Serialising inference and using an in-memory session service removes both
+    failure modes without patching the installed ADK library.
+
+# -----------------------------------------------------------------------------
+# Datasets
+# -----------------------------------------------------------------------------
+datasets:
+  golden: tests/eval/datasets/golden-data.json
+  contract_fixtures: tests/eval/datasets/golden-data-contract-fixtures.json
+  # Generated mirror required by ADK's LocalEvalSetsManager / Dev UI discovery,
+  # which only look inside <agents_dir>/<app_name>/. Byte-identical to `golden`.
+  adk_mirror: module_3/app/cymbal_ops_benchmark.evalset.json
+
+# -----------------------------------------------------------------------------
+# Grading tiers
+#
+# Cases are split by whether a frozen reference answer remains truthful over
+# time. Applying one metric set to both groups is what produced the original
+# 0/7 benchmark: the live-window cases were being graded against expired facts.
+# -----------------------------------------------------------------------------
+tiers:
+
+  reference:
+    description: >-
+      Deterministic cases. The backing BigQuery tables and RAG corpora are
+      static, so the golden final_response stays a valid reference answer and
+      can be graded by a reference-based judge.
+    emits: module_3/app/eval_config_reference.json
+    cases:
+      - UC_1.1a_hardware_error
+      - UC_1.1c_out-of-scope_hardware
+      - UC_1.2a_stockout_risk_lt_20h
+      - UC_2.1a_warranty_transaction
+      - UC_2.3_cross-cloud_offender_audit_sequential_dispatch
+    metrics:
+      final_response_match_v2:
+        threshold: 0.7
+        kind: llm_as_judge
+        reference_based: true
+        scoring: >-
+          Judge sees prompt + agent answer + golden answer and emits
+          valid/invalid. 5 samples, majority vote per turn; case score is the
+          fraction of valid turns.
+      hallucinations_v1:
+        threshold: 0.6
+        kind: llm_as_judge
+        reference_based: false
+        scoring: >-
+          Two-pass. Pass 1 segments the answer into sentences; pass 2 labels
+          each sentence supported / not_applicable / unsupported /
+          contradictory / disputed against the actual tool calls and responses.
+          Score = fraction in {supported, not_applicable}.
+        threshold_rationale: >-
+          0.6 rather than 0.9 because a well-formed operational answer
+          legitimately contains connective prose and formatting that is not
+          itself a groundable factual claim.
+
+  livedata:
+    description: >-
+      Cases that read the 1-hour rolling Cloud Bigtable window
+      (operations-db:cashier_realtime_alerts). Any frozen golden answer expires
+      within the hour, so these are graded reference-free: faithfulness to the
+      tool output actually returned, plus rubric-scored tool selection and
+      argument correctness.
+    emits: module_3/app/eval_config_livedata.json
+    cases:
+      - UC_1.3_real-time_cashier_metrics
+      - UC_2.2_dual_cashier_baseline_parallel_dispatch
+    metrics:
+      hallucinations_v1:
+        threshold: 0.6
+        kind: llm_as_judge
+        reference_based: false
+      rubric_based_tool_use_quality_v1:
+        threshold: 0.7
+        kind: llm_as_judge
+        reference_based: false
+        scoring: Mean of per-rubric yes/no confidences.
+        rubrics:
+          - id: live_tool_invoked
+            type: TOOL_USE_QUALITY
+            property: >-
+              The agent invokes a live Cloud Bigtable telemetry tool (either
+              'get_cashier_realtime_metrics' or
+              'read_cashier_realtime_metrics') to obtain the real-time rolling
+              cashier metrics requested by the user.
+            description: >-
+              Confirms the agent routes real-time cashier telemetry intent to
+              the Bigtable toolset rather than answering from memory or from
+              BigQuery alone.
+          - id: correct_store_cashier_targeting
+            type: TOOL_USE_QUALITY
+            property: >-
+              The arguments passed to the live Bigtable telemetry tool
+              correctly identify the store and cashier named in the user
+              prompt. Accept either a row-key prefix argument of the form
+              'STORE_048#CASH_1190' or separate store_id='STORE_048' and
+              cashier_id='CASH_1190' arguments. Zero-padding of the store
+              number (48 -> STORE_048) must be applied correctly.
+            description: >-
+              Verifies correct entity resolution and row-key normalisation for
+              the Bigtable lookup.
+          - id: historical_baseline_when_requested
+            type: TOOL_USE_QUALITY
+            property: >-
+              If, and only if, the user prompt asks for a historical or
+              baseline comparison (for example a 7-day override baseline), the
+              agent also invokes 'cymbal_analytics_tool' to retrieve that
+              historical figure from BigQuery. If the user prompt asks only for
+              live metrics, this property is satisfied vacuously and the
+              verdict is yes.
+            description: >-
+              Checks multi-tool dispatch: live Bigtable plus BigQuery analytics
+              when a comparison is requested.
+          - id: no_fabricated_tool_input
+            type: TOOL_USE_QUALITY
+            property: >-
+              Every argument value supplied to the tools can be traced back to
+              the user prompt or to the output of a prior tool call in the same
+              conversation. The agent does not invent store IDs, cashier IDs,
+              date ranges, or row keys that were never mentioned or returned.
+            description: >-
+              Guards against hallucinated tool inputs during multi-step
+              dispatch.
+
+# -----------------------------------------------------------------------------
+# Deliberately excluded ADK metrics
+# Documented so reviewers can see these were evaluated and rejected on evidence,
+# not overlooked.
+# -----------------------------------------------------------------------------
+excluded_metrics:
+  - name: tool_trajectory_avg_score
+    adk_default: 1.0
+    reason: >-
+      Binary exact-match. google/adk/evaluation/trajectory_evaluator.py requires
+      identical call count, identical order, and exact dict equality on tool
+      args, returning a hard 1.0 or 0.0. Every tool in this agent takes
+      free-text natural-language arguments, so a two-word rewording of a
+      semantically identical query scores 0.0. Measured: UC_1.1a retrieved the
+      correct runbook via the correct tool and still scored 0.00.
+    note: >-
+      ToolTrajectoryCriterion also offers IN_ORDER and ANY_ORDER match types,
+      which tolerate extra calls — but they still require exact argument
+      equality, so they do not solve the NL-argument problem. Tool-use
+      correctness is instead covered by rubric_based_tool_use_quality_v1.
+  - name: response_match_score
+    adk_default: 0.8
+    reason: >-
+      ROUGE-1 F-measure with Porter stemming
+      (google/adk/evaluation/final_response_match_v1.py:69). Rewards lexical
+      overlap, not correctness, and collapses on live data. Measured: UC_1.3
+      scored 0.5405 while reporting the live window perfectly accurately.
+
+# -----------------------------------------------------------------------------
+# Release gate
+# -----------------------------------------------------------------------------
+gates:
+  min_pass_rate: 1.0
+  fail_on_inference_error: true
+  case_pass_rule: >-
+    A case passes only if EVERY configured metric for its tier clears its
+    threshold; a single failing metric fails the case
+    (LocalEvalService._generate_final_eval_status).

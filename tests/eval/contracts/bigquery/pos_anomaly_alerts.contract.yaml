@@ -1,0 +1,174 @@
+apiVersion: cymbal.datacontract/v1
+kind: DataContract
+metadata:
+  id: cymbal_gold.pos_anomaly_alerts
+  display_name: Cymbal Retail — POS Anomaly & Cashier Promo Abuse Alert Ledger (Gold)
+  version: 1.0.0
+  status: active
+  layer: gold
+  domain: retail-operations
+  owner:
+    team: Cymbal Data Platform Engineering
+    service_account: cymbal-sa-data@pj-elevate-da.iam.gserviceaccount.com
+  tags: [alerts, anomaly-detection, cashier-audit, promo-abuse, ml-inference, medallion-gold, bqca]
+provider:
+  platform: bigquery
+  project: pj-elevate-da
+  dataset: cymbal_gold
+  table: pos_anomaly_alerts
+  fully_qualified_name: pj-elevate-da.cymbal_gold.pos_anomaly_alerts
+  region: us-central1
+  table_type: TABLE
+  physical:
+    partitioning: DAY on alert_ts
+    clustering: [store_id, alert_type]
+    observed_row_count: 5912
+    observed_at: "2026-09-11T02:07:00Z"
+description: |
+  Historical multi-day cashier anomaly and promo abuse alert ledger, partitioned by alert_ts.
+  This is the primary table for multi-day trend analysis, 7-day/30-day top offender rankings and
+  historical override rate calculations. Each row is one ML-generated alert emitted by either the
+  order-level anomaly model or the cashier abuse model, carrying the triggering transaction, the
+  cashier, the computed discount percentage and the inference risk score. For real-time 1-hour
+  live audit status and streaming flags the Cloud Bigtable operational cache
+  (`operations-db:cashier_realtime_alerts`) is queried instead, not this table. The Cymbal Retail
+  Analytics Data Agent filters `alert_type = 'cashier_promo_abuse'` over a rolling 7-day
+  `alert_ts` window to rank offending cashiers by store.
+lineage:
+  produced_by: >-
+    Module 2 Challenge 2.1 / 2.2 ML inference path — BigQuery remote model
+    `cymbal_models.order_anomaly_model` scoring streaming POS payloads, plus the Cloud Dataflow
+    Apache Beam pipeline `cashier_abuse_pipeline.py` calling the `cashier_abuse_model` endpoint over
+    1-hour sliding windows; scored alerts are materialized into this ledger.
+  upstream:
+    - pj-elevate-da.cymbal_gold.pos_transactions_gold
+    - pj-elevate-da.cymbal_gold.pos_transactions_silver (Silver CDC stream)
+    - Remote model pj-elevate-da.cymbal_models.order_anomaly_model
+    - Remote model cashier_abuse_model (Dataflow streaming inference)
+  consumed_by:
+    - Cymbal Retail Analytics Data Agent (BQCA)
+    - cymbal_operations_agent (ADK coordinator, via cymbal_analytics_tool)
+    - Dataplex data quality scan a42f0b63e-70ff-43c3-8e36-fed4ef673f05
+schema:
+  - name: alert_id
+    type: STRING
+    mode: NULLABLE
+    description: Unique alert identifier with prefix ALT-ANOMALY- or ALT-ABUSE-
+    semantic: identifier
+    classification: internal
+  - name: store_id
+    type: STRING
+    mode: NULLABLE
+    description: Store ID from POS transaction
+    semantic: dimension
+    classification: internal
+  - name: alert_type
+    type: STRING
+    mode: NULLABLE
+    description: "Type of alert: order_anomaly or cashier_promo_abuse"
+    semantic: dimension
+    classification: internal
+  - name: alert_source
+    type: STRING
+    mode: NULLABLE
+    description: "Originating model: order_anomaly_model or cashier_abuse_model"
+    semantic: dimension
+    classification: internal
+  - name: transaction_id
+    type: STRING
+    mode: NULLABLE
+    description: POS transaction identifier
+    semantic: identifier
+    classification: internal
+  - name: cashier_id
+    type: STRING
+    mode: NULLABLE
+    description: Cashier identifier
+    semantic: identifier
+    classification: confidential
+  - name: discount_pct
+    type: FLOAT
+    mode: NULLABLE
+    description: Calculated discount percentage (discount / subtotal_amount)
+    semantic: measure
+    classification: confidential
+  - name: risk_score
+    type: FLOAT
+    mode: NULLABLE
+    description: Inference risk score / probability for positive anomaly class
+    semantic: measure
+    classification: confidential
+  - name: alert_ts
+    type: TIMESTAMP
+    mode: NULLABLE
+    description: Event timestamp of the transaction that triggered the alert
+    semantic: timestamp
+    classification: internal
+service_levels:
+  freshness: >-
+    Near-real-time. Alerts are materialized from streaming ML inference over the POS event stream
+    (stateless BigQuery remote-model scoring plus a Dataflow 1-hour sliding window updated every
+    10 seconds), so this ledger trails the source transactions rather than running on a batch
+    schedule. No formal freshness SLO has been published; the numeric target is unknown.
+  retention: unknown
+  availability: "BigQuery regional SLA (us-central1)"
+quality:
+  rules:
+    - id: alert_id_not_null
+      dimension: completeness
+      column: alert_id
+      assertion: alert_id IS NOT NULL for every row.
+      threshold: 1.0
+      enforced_by: dataplex-dq-scan
+    - id: alert_id_unique
+      dimension: uniqueness
+      column: alert_id
+      assertion: COUNT(DISTINCT alert_id) = COUNT(*) — one row per emitted alert.
+      threshold: 1.0
+      enforced_by: dataplex-dq-scan
+    - id: alert_type_enumerated
+      dimension: validity
+      column: alert_type
+      assertion: alert_type IN ('order_anomaly', 'cashier_promo_abuse') per the documented column definition.
+      threshold: 1.0
+      enforced_by: eval-fixture
+    - id: alert_source_matches_alert_type
+      dimension: consistency
+      column: alert_source
+      assertion: >-
+        alert_source IN ('order_anomaly_model', 'cashier_abuse_model') and pairs with alert_type
+        (order_anomaly -> order_anomaly_model, cashier_promo_abuse -> cashier_abuse_model).
+      threshold: 0.99
+      enforced_by: not-enforced
+    - id: risk_score_probability_range
+      dimension: validity
+      column: risk_score
+      assertion: risk_score BETWEEN 0.0 AND 1.0 — it is a positive-class probability.
+      threshold: 1.0
+      enforced_by: not-enforced
+    - id: rolling_7day_window_populated
+      dimension: timeliness
+      column: alert_ts
+      assertion: >-
+        At least one row with alert_type = 'cashier_promo_abuse' exists where
+        alert_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY), so the agent's default
+        7-day offender ranking returns a non-empty result.
+      threshold: 1.0
+      enforced_by: eval-fixture
+governance:
+  classification: internal
+  pii_columns: []
+  column_level_security: >-
+    NOT enforced on this table, and no masked working copy of it exists. No Module 1 Lab 4 data
+    governance tags or masking policies were applied to pos_anomaly_alerts; the table carries no
+    customer identifiers or customer names. If the Lab 4 pattern were extended here, cashier_id
+    would be the candidate for a pseudonymisation masking rule since it names an individual
+    employee under audit.
+  row_level_security: >-
+    NOT enforced on this table. The Lab 4 row-access-policy pattern (unrestricted lead vs.
+    store-scoped analyst filtering on store_id) was demonstrated on
+    `gold_inventory_reconciliation_ledger2`. Applying it here would scope loss-prevention analysts
+    to their own store_id partitions of the alert ledger.
+evaluation:
+  exercised_by_eval_cases:
+    - UC_2.3_cross-cloud_offender_audit_sequential_dispatch

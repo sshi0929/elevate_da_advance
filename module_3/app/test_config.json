@@ -1,0 +1,18 @@
+{
+  "_generated": "DO NOT EDIT. Generated from tests/eval/eval_config.yaml. Auto-discovered fallback for a bare `adk eval`; mirrors the reference tier. Prefer tests/eval/run_eval_suite.py, which applies the correct per-tier configs.",
+  "_tier": "reference",
+  "criteria": {
+    "final_response_match_v2": {
+      "threshold": 0.7,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-3.8-flash"
+      }
+    },
+    "hallucinations_v1": {
+      "threshold": 0.6,
+      "judgeModelOptions": {
+        "judgeModel": "gemini-3.8-flash"
+      }
+    }
+  }
+}

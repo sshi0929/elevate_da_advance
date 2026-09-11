@@ -14,7 +14,7 @@ from app.tools.rag_tool import pos_troubleshooting_rag_tool
 from app.tools.bigtable_tool import get_bigtable_mcp_toolset, read_cashier_realtime_metrics
 
 # Model selection: gemini-3.6-flash as required by Challenge 3.1
-MODEL_NAME = os.getenv("COORDINATOR_MODEL", "gemini-3.6-flash")
+MODEL_NAME = os.getenv("COORDINATOR_MODEL", "gemini-3.8-flash")
 
 # Instantiate Cloud Run MCP toolset
 bigtable_mcp_toolset = get_bigtable_mcp_toolset()
